@@ -92,10 +92,11 @@ async def process_anime_download(
     anime_name = crawler.extract_anime_name(soup, url)
     download_path = create_download_directory(anime_name, custom_path=custom_path)
     video_urls = await crawler.collect_video_urls()
-    # inform caller about total episodes if callback provided
+    # inform caller about total episodes and anime name if callback provided
     try:
         if callable(progress_callback):
             progress_callback("__total__", len(video_urls))
+            progress_callback("__anime_name__", anime_name)
     except Exception:
         pass
 
