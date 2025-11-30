@@ -1,0 +1,20 @@
+services:
+  anime_unity_downloader:
+    container_name: AnimeUnity-Downloader
+    environment:
+      - PYTHONUNBUFFERED=1
+
+      - SERVICE_PORT=${SERVICE_PORT:-5000}
+
+      - FLASK_APP=flask_app.py
+      - FLASK_DEBUG=${FLASK_DEBUG:-True}
+      - FLASK_HOST=${FLASK_HOST:-0.0.0.0}
+      - FLASK_PORT=${FLASK_PORT:-5000}
+      - SSL_CONTEXT=${SSL_CONTEXT:-None}
+    ports:
+      - "8222:${FLASK_PORT}"
+    restart: unless-stopped
+    build: .
+    pull_policy: build
+    volumes:
+      - ${MEDIA_DIRECTORY}:/app/Downloads
