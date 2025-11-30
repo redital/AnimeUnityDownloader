@@ -6,6 +6,12 @@ from threading import Lock
 import requests
 from anime_downloader import process_anime_download
 
+from logger import get_logger
+
+logger = get_logger(__name__)
+  
+
+
 # Event loop separato per task asincroni
 background_loop = asyncio.new_event_loop()
 
@@ -21,13 +27,21 @@ def start_background_loop(loop):
 threading.Thread(target=start_background_loop, args=(background_loop,), daemon=True).start()
 
 def check_resource_availability(url):
+    logger.info(f"Verifying resource availability for URL: {url}")
     res = requests.get(url, timeout=5)
     if res.status_code != 200:
+        #res.raise_for_status()
         if res.status_code == 404:
-            return False, "Resource not found (404)"
-        if res.status_code == 405:
-            return False, "Method not allowed (405)"
-        return False, f"Error, status code: {res.status_code}"
+            msg = "Resource not found (404)"
+            logger.info(msg)
+            return False, msg
+        elif res.status_code == 405:
+            msg = "Anime id not found (405)"
+            logger.info(msg)
+            return False, msg
+        msg = f"Error, status code: {res.status_code}"
+        logger.info(msg)
+        return False, msg
     return True, "ok"
 
 def progress_callback(anime_id, episode_idx, value):
@@ -112,6 +126,7 @@ def start_download(params):
         try:
             await process_anime_download(**process_anime_download_params, progress_callback=lambda episode_idx, value: progress_callback(anime_id, episode_idx, value))
         except Exception as exc:
+            logger.exception(f"Errore durante il download per anime_id {anime_id}:{exc}")
             with downloads_lock:
                 downloads_status[anime_id]["status"] = "failed"
                 downloads_status[anime_id]["message"] = str(exc)
@@ -123,13 +138,16 @@ def start_download(params):
 
     asyncio.run_coroutine_threadsafe(_job_wrapper(), background_loop)
 
+    logger.info(f"Preso in carico download per anime_id: {anime_id} con parametri: {process_anime_download_params}")
     return {"status": "success", "message": "Richiesta presa in carico", "anime_id": anime_id, "params": process_anime_download_params}, 200
 
 def get_download_status(anime_id):
     with downloads_lock:
         info = downloads_status.get(anime_id)
     if not info:
-        return {"status": "error", "message": "Download non trovato"}, 404
+        msg = "Download non trovato"
+        logger.error(msg)
+        return {"status": "error", "message": msg}, 404
     return {"status": "success", "data": info}, 200
 
 def list_downloads():
