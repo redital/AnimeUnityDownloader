@@ -1,0 +1,138 @@
+import asyncio
+import os
+import threading
+import time
+from threading import Lock
+import requests
+from anime_downloader import process_anime_download
+
+# Event loop separato per task asincroni
+background_loop = asyncio.new_event_loop()
+
+# Tracciamento in-memory dei download per `anime_id`
+downloads_status = {}
+downloads_lock = Lock()
+
+def start_background_loop(loop):
+    asyncio.set_event_loop(loop)
+    loop.run_forever()
+
+# Avviamo il loop asincrono in un thread dedicato
+threading.Thread(target=start_background_loop, args=(background_loop,), daemon=True).start()
+
+def check_resource_availability(url):
+    res = requests.get(url, timeout=5)
+    if res.status_code != 200:
+        if res.status_code == 404:
+            return False, "Resource not found (404)"
+        if res.status_code == 405:
+            return False, "Method not allowed (405)"
+        return False, f"Error, status code: {res.status_code}"
+    return True, "ok"
+
+def progress_callback(anime_id, episode_idx, value):
+    """Callback per il monitoraggio del progresso del download"""
+    with downloads_lock:
+        info = downloads_status.get(anime_id)
+        if info is None:
+            return
+
+        if episode_idx == "__total__":
+            try:
+                info["total_episodes"] = int(value)
+            except Exception:
+                info["total_episodes"] = None
+            return
+
+        # Update episodio
+        try:
+            idx = int(episode_idx)
+            pct = float(value)
+        except Exception:
+            return
+
+        info.setdefault("episodes", {})[idx] = pct
+
+        # Calcola la percentuale totale
+        total = info.get("total_episodes")
+        if total and total > 0:
+            summed = sum(info["episodes"].get(i, 0) for i in range(total))
+            overall = summed / total
+        else:
+            parts = list(info["episodes"].values())
+            overall = (sum(parts) / len(parts)) if parts else 0.0
+
+        info["overall_percent"] = overall
+
+def start_download(params):
+    anime_id = params.get("anime_id")
+    base_path = os.getcwd()
+
+    # Verifica se la risorsa è disponibile
+    check, message = check_resource_availability(f"https://www.animeunity.so/anime/{anime_id}")
+    if not check:
+        return {"status": "error", "message": message}, 404
+
+    path = None
+    if params.get('custom_path'):
+        path = os.path.join(base_path, params['custom_path'])
+
+    process_anime_download_params = {
+        "url": f"https://www.animeunity.so/anime/{anime_id}",
+        "start_episode": params.get('start_episode'),
+        "end_episode": params.get('end_episode'),
+        "custom_path": path,
+    }
+
+    # Se un download per lo stesso anime è già in coda, rifiuta
+    with downloads_lock:
+        existing = downloads_status.get(anime_id)
+        if existing and existing.get("status") in ("queued", "running"):
+            return {"status": "error", "message": "Download già in corso per questo anime", "anime_id": anime_id}, 400
+
+        # Registra stato iniziale
+        downloads_status[anime_id] = {
+            "anime_id": anime_id,
+            "status": "queued",
+            "message": None,
+            "params": process_anime_download_params,
+            "started_at": None,
+            "finished_at": None,
+            "episodes": {},
+            "total_episodes": None,
+            "overall_percent": 0.0,
+        }
+
+    # Avvia la coroutine per il download
+    async def _job_wrapper():
+        with downloads_lock:
+            downloads_status[anime_id]["status"] = "running"
+            downloads_status[anime_id]["started_at"] = time.time()
+
+        try:
+            await process_anime_download(**process_anime_download_params, progress_callback=lambda episode_idx, value: progress_callback(anime_id, episode_idx, value))
+        except Exception as exc:
+            with downloads_lock:
+                downloads_status[anime_id]["status"] = "failed"
+                downloads_status[anime_id]["message"] = str(exc)
+                downloads_status[anime_id]["finished_at"] = time.time()
+        else:
+            with downloads_lock:
+                downloads_status[anime_id]["status"] = "completed"
+                downloads_status[anime_id]["finished_at"] = time.time()
+
+    asyncio.run_coroutine_threadsafe(_job_wrapper(), background_loop)
+
+    return {"status": "success", "message": "Richiesta presa in carico", "anime_id": anime_id, "params": process_anime_download_params}, 200
+
+def get_download_status(anime_id):
+    with downloads_lock:
+        info = downloads_status.get(anime_id)
+    if not info:
+        return {"status": "error", "message": "Download non trovato"}, 404
+    return {"status": "success", "data": info}, 200
+
+def list_downloads():
+    with downloads_lock:
+        items = list(downloads_status.values())
+    return {"status": "success", "data": items}, 200
