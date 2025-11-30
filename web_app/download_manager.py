@@ -58,6 +58,10 @@ def progress_callback(anime_id, episode_idx, value):
                 info["total_episodes"] = None
             return
 
+        if episode_idx == "__anime_name__":
+            info["anime_name"] = str(value)
+            return
+
         # Update episodio
         try:
             idx = int(episode_idx)
@@ -107,6 +111,7 @@ def start_download(params):
         # Registra stato iniziale
         downloads_status[anime_id] = {
             "anime_id": anime_id,
+            "anime_name": None,  # Verrà impostato dal callback
             "status": "queued",
             "message": None,
             "params": process_anime_download_params,
