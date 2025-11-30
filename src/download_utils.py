@@ -55,7 +55,14 @@ def save_file_with_progress(
     task_info: tuple,
 ) -> None:
     """Save a file to the specified path while tracking and updating progress."""
-    job_progress, task, overall_task = task_info
+    # task_info now: (job_progress, task, overall_task, progress_callback, episode_idx)
+    # For backward compatibility, pad missing values
+    if len(task_info) >= 5:
+        job_progress, task, overall_task, progress_callback, episode_idx = task_info
+    else:
+        job_progress, task, overall_task = task_info
+        progress_callback = None
+        episode_idx = None
     file_size = int(response.headers.get("Content-Length", -1))
     chunk_size = get_chunk_size(file_size)
     total_downloaded = 0
@@ -65,8 +72,18 @@ def save_file_with_progress(
             if chunk:
                 file.write(chunk)
                 total_downloaded += len(chunk)
-                progress_percentage = (total_downloaded / file_size) * 100
+                if file_size > 0:
+                    progress_percentage = (total_downloaded / file_size) * 100
+                else:
+                    progress_percentage = 0.0
                 job_progress.update(task, completed=progress_percentage)
+                # notify external progress callback if provided
+                try:
+                    if callable(progress_callback):
+                        progress_callback(episode_idx, progress_percentage)
+                except Exception:
+                    # don't let callback errors break the download
+                    pass
 
     job_progress.update(task, completed=100, visible=False)
     job_progress.advance(overall_task)
@@ -82,7 +99,7 @@ def manage_running_tasks(futures: dict, job_progress: Progress) -> None:
 
 
 def run_in_parallel(
-    func: callable, items: list, job_progress: Progress, *args: tuple,
+    func: callable, items: list, job_progress: Progress, *args: tuple, extra_info: object = None,
 ) -> None:
     """Execute a function in parallel for a list of items, updating progress."""
     num_items = len(items)
@@ -98,7 +115,7 @@ def run_in_parallel(
                 total=100,
                 visible=False,
             )
-            task_info = (job_progress, task, overall_task)
+            task_info = (job_progress, task, overall_task, extra_info, indx)
             future = executor.submit(func, item, *args, task_info)
             futures[future] = task
             manage_running_tasks(futures, job_progress)

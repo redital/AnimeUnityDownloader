@@ -70,13 +70,13 @@ def process_video_url(video_url: str, download_path: str, task_info: tuple) -> N
     download_episode(download_link, download_path, task_info)
 
 
-def download_anime(anime_name: str, video_urls: list[str], download_path: str) -> None:
+def download_anime(anime_name: str, video_urls: list[str], download_path: str, progress_callback: callable | None = None) -> None:
     """Download episodes of a specified anime from provided video URLs."""
     job_progress = create_progress_bar()
     progress_table = create_progress_table(anime_name, job_progress)
 
     with Live(progress_table, refresh_per_second=10):
-        run_in_parallel(process_video_url, video_urls, job_progress, download_path)
+        run_in_parallel(process_video_url, video_urls, job_progress, download_path, extra_info=progress_callback)
 
 
 async def process_anime_download(
@@ -84,6 +84,7 @@ async def process_anime_download(
     start_episode: int | None = None,
     end_episode: int | None = None,
     custom_path: str | None = None,
+    progress_callback: callable | None = None,
 ) -> None:
     """Process the download of an anime from the specified URL."""
     soup = fetch_page_httpx(url)
@@ -91,7 +92,14 @@ async def process_anime_download(
     anime_name = crawler.extract_anime_name(soup, url)
     download_path = create_download_directory(anime_name, custom_path=custom_path)
     video_urls = await crawler.collect_video_urls()
-    download_anime(anime_name, video_urls, download_path)
+    # inform caller about total episodes if callback provided
+    try:
+        if callable(progress_callback):
+            progress_callback("__total__", len(video_urls))
+    except Exception:
+        pass
+
+    download_anime(anime_name, video_urls, download_path, progress_callback=progress_callback)
 
 
 async def main() -> None:
