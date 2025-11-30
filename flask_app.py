@@ -1,9 +1,18 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, render_template, send_from_directory
 from logger import logger
 from web_app.download_manager import start_download, get_download_status, list_downloads
-from config import flask_app_config
+from config import flask_app_config, template_folder, static_folder
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
+
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(static_folder, 'favicon.ico', mimetype='image/vnd.microsoft.icon')
+
+@app.route('/')
+def home():
+    return render_template('index.html')
+
 
 @app.route('/download/<anime_id>', methods=['GET'])
 def download_anime(anime_id):

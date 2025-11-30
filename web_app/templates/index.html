@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anime Downloader</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Anime Downloader</h1>
+
+        <!-- Messaggio di risultato -->
+        <div id="resultMessage" style="display: none; margin-bottom: 20px;"></div>
+
+        <form id="downloadForm" class="form">
+            <label for="anime_id">Anime ID</label>
+            <input type="text" id="anime_id" name="anime_id" required>
+            
+            <button type="button" id="startDownloadBtn">Avvia Download</button>
+
+            <div id="additionalParams" class="hidden">
+                <label for="start_episode">Start Episode</label>
+                <input type="number" id="start_episode" name="start_episode">
+                
+                <label for="end_episode">End Episode</label>
+                <input type="number" id="end_episode" name="end_episode">
+                
+                <label for="custom_path">Custom Path</label>
+                <input type="text" id="custom_path" name="custom_path">
+            </div>
+
+            <button type="button" id="toggleParamsBtn">Mostra/Occulta Parametri</button>
+        </form>
+
+        <div id="progressSection">
+            <h2>Download Progress</h2>
+            <div id="downloadProgressContainer"></div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
