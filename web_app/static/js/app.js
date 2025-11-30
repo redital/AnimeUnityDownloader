@@ -21,18 +21,21 @@ function updateDownloadProgress(anime_id, progressSpan, progressText) {
                         progressText.textContent = `${animeName}: ${Math.min(Math.round(info.overall_percent), 100)}% completato`;
                     } else if (info.status === 'completed') {
                         progressText.textContent = `${animeName}: Download completato!`;
-                        clearInterval(intervalId);
+                        progressSpan.style.width = `${MAX_PROGRESS_WIDTH}px`; // La barra è piena
+                        clearInterval(intervalId); // Ferma il polling
                     } else if (info.status === 'failed') {
                         progressText.textContent = `${animeName}: Download fallito.`;
-                        clearInterval(intervalId);
+                        progressSpan.style.width = `0px`; // La barra è vuota
+                        clearInterval(intervalId); // Ferma il polling
                     } else if (info.status === 'queued') {
                         progressText.textContent = `${animeName}: In attesa...`;
+                        progressSpan.style.width = `0px`; // La barra rimane vuota per "queued"
                     }
                 }
             })
             .catch(error => {
                 console.error(`Errore nel recupero dello stato per ${anime_id}:`, error);
-                clearInterval(intervalId);
+                clearInterval(intervalId); // Ferma il polling in caso di errore
             });
     }, POLLING_INTERVAL);
 }
@@ -119,7 +122,13 @@ function updateAllDownloadProgress() {
                     downloadProgress.appendChild(progressText);
 
                     // Avvia il monitoraggio per tutti i download (sia running che completed/failed/queued)
-                    updateDownloadProgress(download.anime_id, progressSpan, progressText);
+                    // Se il download è "queued", non avviamo il monitoraggio, ma solo la visualizzazione
+                    if (download.status !== 'queued') {
+                        updateDownloadProgress(download.anime_id, progressSpan, progressText);
+                    } else {
+                        progressText.textContent = `${download.anime_name || 'Anime'}: In attesa...`;
+                        progressSpan.style.width = `0px`; // La barra rimane vuota per "queued"
+                    }
                 });
             }
         })
