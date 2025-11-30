@@ -19,6 +19,16 @@ app = Flask(__name__)
 # Event loop separato per task asincroni
 background_loop = asyncio.new_event_loop()
 
+# Configure logging with RichHandler so logs temporarily clear Live UI
+rich_handler = RichHandler(show_time=False)
+logging.getLogger("werkzeug").handlers = [rich_handler]
+logging.getLogger("werkzeug").setLevel(logging.INFO)
+
+# Ensure the Flask app logger also uses RichHandler
+app.logger.handlers = [rich_handler]
+app.logger.setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO, handlers=[rich_handler])
+
 def start_background_loop(loop):
     asyncio.set_event_loop(loop)
     loop.run_forever()
