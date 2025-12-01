@@ -4,7 +4,8 @@ import threading
 import time
 from threading import Lock
 import requests
-from anime_downloader import process_anime_download
+from anime_downloader import process_anime_download ,fetch_page_httpx
+from src.crawler.crawler import Crawler
 
 from logger import get_logger
 
@@ -26,23 +27,40 @@ def start_background_loop(loop):
 # Avviamo il loop asincrono in un thread dedicato
 threading.Thread(target=start_background_loop, args=(background_loop,), daemon=True).start()
 
-def check_resource_availability(url):
+# def check_resource_availability(url):
+#     logger.info(f"Verifying resource availability for URL: {url}")
+#     res = requests.get(url, timeout=5)
+#     if res.status_code != 200:
+#         #res.raise_for_status()
+#         if res.status_code == 404:
+#             msg = "Resource not found (404)"
+#             logger.info(msg)
+#             return False, msg
+#         elif res.status_code == 405:
+#             msg = "Anime id not found (405)"
+#             logger.info(msg)
+#             return False, msg
+#         msg = f"Error, status code: {res.status_code}"
+#         logger.info(msg)
+#         return False, msg
+#     return True, "ok"
+def new_check_resource_availability(url):
     logger.info(f"Verifying resource availability for URL: {url}")
-    res = requests.get(url, timeout=5)
-    if res.status_code != 200:
-        #res.raise_for_status()
-        if res.status_code == 404:
-            msg = "Resource not found (404)"
-            logger.info(msg)
-            return False, msg
-        elif res.status_code == 405:
-            msg = "Anime id not found (405)"
-            logger.info(msg)
-            return False, msg
-        msg = f"Error, status code: {res.status_code}"
-        logger.info(msg)
-        return False, msg
-    return True, "ok"
+    try:
+        crawler = Crawler(url=url, start_episode=None, end_episode=None)
+    except Exception as e:
+        message = f"Error initializing crawler"
+        logger.error(message)
+        logger.exception(e)
+        return False, message, None, None
+    soup = fetch_page_httpx(url)
+    anime_name = crawler.extract_anime_name(soup, url)
+    n_episodes = crawler.num_episodes
+    if n_episodes<1:
+        message = "No episodes found for the given anime ID"
+        logger.error(message)
+        return False, message, None, None
+    return True, "ok", anime_name, n_episodes
 
 def progress_callback(anime_id, episode_idx, value):
     """Callback per il monitoraggio del progresso del download"""
@@ -87,7 +105,7 @@ def start_download(params):
     base_path = os.getcwd()
 
     # Verifica se la risorsa è disponibile
-    check, message = check_resource_availability(f"https://www.animeunity.so/anime/{anime_id}")
+    check, message, anime_name, n_episodes = new_check_resource_availability(f"https://www.animeunity.so/anime/{anime_id}")
     if not check:
         return {"status": "error", "message": message}, 404
 
@@ -111,14 +129,14 @@ def start_download(params):
         # Registra stato iniziale
         downloads_status[anime_id] = {
             "anime_id": anime_id,
-            "anime_name": None,  # Verrà impostato dal callback
+            "anime_name": anime_name,
             "status": "queued",
             "message": None,
             "params": process_anime_download_params,
             "started_at": None,
             "finished_at": None,
             "episodes": {},
-            "total_episodes": None,
+            "total_episodes": n_episodes,
             "overall_percent": 0.0,
         }
 
