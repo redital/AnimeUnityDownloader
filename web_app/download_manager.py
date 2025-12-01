@@ -115,8 +115,8 @@ def start_download(params):
 
     process_anime_download_params = {
         "url": f"https://www.animeunity.so/anime/{anime_id}",
-        "start_episode": params.get('start_episode'),
-        "end_episode": params.get('end_episode'),
+        "start_episode": int(params.get('start_episode')) if params.get('start_episode') else None,
+        "end_episode": int(params.get('end_episode')) if params.get('end_episode') else None,
         "custom_path": path,
     }
 
