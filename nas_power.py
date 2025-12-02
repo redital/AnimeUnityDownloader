@@ -154,6 +154,9 @@ class NASPowerManager:
         test_path = os.path.join(self.mount_path, test_file) if test_file else self.mount_path
         try:
             ok, msg = self.run_ssh_command(self.ssh_host, self.ssh_user, self.ssh_password, f"ls {test_path}")
+            if not msg:
+                logger.warning("Cartella montata vuota. SUSPECT!")
+                return False
             if not ok:
                 logger.warning(f"Mount check fallito: {msg}")
             return ok
@@ -198,6 +201,10 @@ class NASPowerManager:
         ok, out = self.run_ssh_command(self.ssh_host, self.ssh_user, self.ssh_password, f"sudo umount {self.mount_path}")
         if not ok:
             logger.warning(f"Umount fallito: {out}")
+            if "not mounted" in out.lower():
+                logger.info("La share non era montata. Procedo al remount.")
+            else:
+                return self.remount_share_via_ssh()  # Riprova
         # Monta
         ok, out = self.run_ssh_command(self.ssh_host, self.ssh_user, self.ssh_password, f"sudo mount -a")
         if ok:
@@ -206,3 +213,12 @@ class NASPowerManager:
         else:
             logger.error(f"Remount via SSH fallito: {out}")
             return False
+        
+    def get_nas_status(self):
+        """Restituisce lo stato di online/offline e della mount share."""
+        online = self.is_nas_online()
+        if not online:
+            return False, False
+        
+        mount_ok = self.is_mount_healthy()
+        return online, mount_ok

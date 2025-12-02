@@ -2,8 +2,11 @@ from flask import Flask, request, jsonify, render_template, send_from_directory
 from logger import logger
 from web_app.download_manager import start_download, get_download_status, list_downloads
 from config import flask_app_config, template_folder, static_folder
+from web_app.routes.nas_management_routes import nas_management_routes
 
 app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
+
+app.register_blueprint(nas_management_routes)
 
 @app.route('/favicon.ico')
 def favicon():
