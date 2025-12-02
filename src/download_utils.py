@@ -55,20 +55,54 @@ def save_file_with_progress(
     task_info: tuple,
 ) -> None:
     """Save a file to the specified path while tracking and updating progress."""
-    # task_info now: (job_progress, task, overall_task, progress_callback, episode_idx)
+    # task_info now: (job_progress, task, overall_task, extra_info, episode_idx)
+    # extra_info can be:
+    # - a callable(progress_cb) -> used directly
+    # - a dict with keys { 'progress_cb': callable, 'control_cb': callable }
     # For backward compatibility, pad missing values
     if len(task_info) >= 5:
-        job_progress, task, overall_task, progress_callback, episode_idx = task_info
+        job_progress, task, overall_task, extra_info, episode_idx = task_info
     else:
         job_progress, task, overall_task = task_info
-        progress_callback = None
+        extra_info = None
         episode_idx = None
+
+    # normalize extra_info into progress_callback and control_callback
+    progress_callback = None
+    control_callback = None
+    if extra_info is not None:
+        if callable(extra_info):
+            progress_callback = extra_info
+        elif isinstance(extra_info, dict):
+            progress_callback = extra_info.get('progress_cb')
+            control_callback = extra_info.get('control_cb')
+        else:
+            # unknown type: ignore
+            progress_callback = None
     file_size = int(response.headers.get("Content-Length", -1))
     chunk_size = get_chunk_size(file_size)
     total_downloaded = 0
 
     with Path(final_path).open("wb") as file:
         for chunk in response.iter_content(chunk_size=chunk_size):
+            # check control flags (pause/cancel)
+            if control_callback and callable(control_callback):
+                try:
+                    ctrl = control_callback()
+                except Exception:
+                    ctrl = {}
+                if isinstance(ctrl, dict) and ctrl.get('cancelled'):
+                    # raise to signal cancellation
+                    raise RuntimeError('download_cancelled')
+                # if paused, wait until unpaused
+                while isinstance(ctrl, dict) and ctrl.get('paused'):
+                    import time as _time
+                    _time.sleep(0.5)
+                    try:
+                        ctrl = control_callback()
+                    except Exception:
+                        ctrl = {}
+
             if chunk:
                 file.write(chunk)
                 total_downloaded += len(chunk)

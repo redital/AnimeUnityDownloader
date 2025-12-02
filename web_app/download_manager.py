@@ -8,6 +8,8 @@ from anime_downloader import process_anime_download ,fetch_page_httpx
 from src.crawler.crawler import Crawler
 
 from logger import get_logger
+from web_app.nas_power_manager import nas_manager, nas_power_on
+
 
 logger = get_logger(__name__)
   
@@ -100,6 +102,12 @@ def progress_callback(anime_id, episode_idx, value):
 
         info["overall_percent"] = overall
 
+def power_check_before_download():
+    nas_online, mount_ok = nas_manager.get_nas_status()
+    logger.info(f"NAS status - Online: {nas_online}, Mount OK: {mount_ok}")
+
+    return nas_power_on(nas_online, mount_ok)
+
 def start_download(params):
     anime_id = params.get("anime_id")
     base_path = os.getcwd()
@@ -108,6 +116,15 @@ def start_download(params):
     check, message, anime_name, n_episodes = new_check_resource_availability(f"https://www.animeunity.so/anime/{anime_id}")
     if not check:
         return {"status": "error", "message": message}, 404
+
+    logger.info(f"Resource available for anime_id {anime_id}: {anime_name} with {n_episodes} episodes.")
+    
+    logger.info("Verifying NAS status before starting download.")
+    power_check = power_check_before_download()
+    if power_check[1] != 200:
+        return power_check
+    
+    logger.info("NAS is ready. Proceeding with download.")
 
     path = None
     if params.get('custom_path'):
@@ -147,12 +164,34 @@ def start_download(params):
             downloads_status[anime_id]["started_at"] = time.time()
 
         try:
-            await process_anime_download(**process_anime_download_params, progress_callback=lambda episode_idx, value: progress_callback(anime_id, episode_idx, value))
+            # prepare control callback and wrapped progress callback to pass extra info
+            def control_cb():
+                with downloads_lock:
+                    info = downloads_status.get(anime_id, {})
+                    return {
+                        'paused': bool(info.get('paused', False)),
+                        'cancelled': bool(info.get('cancelled', False)),
+                    }
+
+            def wrapped_progress_cb(idx, val):
+                return progress_callback(anime_id, idx, val)
+
+            extra_info = {
+                'progress_cb': wrapped_progress_cb,
+                'control_cb': control_cb,
+            }
+
+            await process_anime_download(**process_anime_download_params, progress_callback=extra_info)
         except Exception as exc:
+            # handle cancellation specially
+            msg = str(exc)
             logger.exception(f"Errore durante il download per anime_id {anime_id}:{exc}")
             with downloads_lock:
-                downloads_status[anime_id]["status"] = "failed"
-                downloads_status[anime_id]["message"] = str(exc)
+                if 'download_cancelled' in msg or 'download_cancelled' in repr(exc):
+                    downloads_status[anime_id]["status"] = "cancelled"
+                else:
+                    downloads_status[anime_id]["status"] = "failed"
+                    downloads_status[anime_id]["message"] = str(exc)
                 downloads_status[anime_id]["finished_at"] = time.time()
         else:
             with downloads_lock:
@@ -163,6 +202,51 @@ def start_download(params):
 
     logger.info(f"Preso in carico download per anime_id: {anime_id} con parametri: {process_anime_download_params}")
     return {"status": "success", "message": "Richiesta presa in carico", "anime_id": anime_id, "params": process_anime_download_params}, 200
+
+
+def pause_all_downloads():
+    with downloads_lock:
+        for aid, info in downloads_status.items():
+            if info.get('status') in ('running', 'queued'):
+                info['paused'] = True
+                info['prev_status'] = info.get('status')
+                info['status'] = 'paused'
+    return {"status": "success", "message": "Tutti i download messi in pausa"}, 200
+
+
+def resume_all_downloads():
+    with downloads_lock:
+        for aid, info in downloads_status.items():
+            if info.get('status') == 'paused':
+                info['paused'] = False
+                # restore previous status or set to running
+                prev = info.pop('prev_status', None)
+                info['status'] = prev if prev in ('queued', 'running') else 'running'
+    return {"status": "success", "message": "Tutti i download ripresi"}, 200
+
+
+def cancel_all_downloads():
+    with downloads_lock:
+        for aid, info in downloads_status.items():
+            # mark cancelled; running threads will pick this up
+            if info.get('status') in ('running', 'queued', 'paused'):
+                info['cancelled'] = True
+                info['status'] = 'cancelled'
+                info['finished_at'] = time.time()
+    return {"status": "success", "message": "Tutti i download annullati"}, 200
+
+
+def cancel_download(anime_id):
+    with downloads_lock:
+        info = downloads_status.get(anime_id)
+        if not info:
+            return {"status": "error", "message": "Download non trovato"}, 404
+        if info.get('status') in ('completed', 'cancelled', 'failed'):
+            return {"status": "error", "message": "Download già terminato"}, 400
+        info['cancelled'] = True
+        info['status'] = 'cancelled'
+        info['finished_at'] = time.time()
+    return {"status": "success", "message": f"Download {anime_id} annullato"}, 200
 
 def get_download_status(anime_id):
     with downloads_lock:
