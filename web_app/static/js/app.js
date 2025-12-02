@@ -2,8 +2,16 @@
 const MAX_PROGRESS_WIDTH = 400;
 const POLLING_INTERVAL = 1000; // Aggiornamento ogni 1 secondo
 
+// Aggiungiamo un oggetto per tracciare i task già completati (per evitare il polling)
+const completedDownloads = new Set(); // Set per tracciare gli ID dei download completati
+
 // Funzione generica per aggiornare il progresso di un download
 function updateDownloadProgress(anime_id, progressSpan, progressText) {
+    // Verifica se questo download è già stato completato o fallito
+    if (completedDownloads.has(anime_id)) {
+        return; // Esci dalla funzione se il download è già stato completato
+    }
+
     const intervalId = setInterval(function() {
         fetch(`/download-status/${anime_id}`)
             .then(response => response.json())
@@ -23,10 +31,14 @@ function updateDownloadProgress(anime_id, progressSpan, progressText) {
                         progressText.textContent = `${animeName}: Download completato!`;
                         progressSpan.style.width = `${MAX_PROGRESS_WIDTH}px`; // La barra è piena
                         clearInterval(intervalId); // Ferma il polling
+                        completedDownloads.add(anime_id); // Aggiungi l'ID al set dei completati
+                        updateAllDownloadProgress(); // Ricarica la lista per verificare il prossimo download
                     } else if (info.status === 'failed') {
                         progressText.textContent = `${animeName}: Download fallito.`;
                         progressSpan.style.width = `0px`; // La barra è vuota
                         clearInterval(intervalId); // Ferma il polling
+                        completedDownloads.add(anime_id); // Aggiungi l'ID al set dei falliti
+                        updateAllDownloadProgress(); // Ricarica la lista per verificare il prossimo download
                     } else if (info.status === 'queued') {
                         progressText.textContent = `${animeName}: In attesa...`;
                         progressSpan.style.width = `0px`; // La barra rimane vuota per "queued"
@@ -105,29 +117,58 @@ function updateAllDownloadProgress() {
 
                 // Per ogni download in corso, crea una barra di progresso
                 downloads.forEach(download => {
-                    const downloadProgress = document.createElement('div');
-                    downloadProgress.classList.add('download-progress');
-                    downloadProgress.setAttribute('id', `progress_${download.anime_id}`);
-                    progressContainer.appendChild(downloadProgress);
+                    // Non creare il monitoraggio per i task completati o falliti
+                    if (completedDownloads.has(download.anime_id)) {
+                        // Mostra solo il risultato senza eseguire il polling
+                        const downloadProgress = document.createElement('div');
+                        downloadProgress.classList.add('download-progress');
+                        downloadProgress.setAttribute('id', `progress_${download.anime_id}`);
+                        progressContainer.appendChild(downloadProgress);
 
-                    const progressBar = document.createElement('div');
-                    progressBar.classList.add('progress-bar');
-                    downloadProgress.appendChild(progressBar);
+                        const progressBar = document.createElement('div');
+                        progressBar.classList.add('progress-bar');
+                        downloadProgress.appendChild(progressBar);
 
-                    const progressSpan = document.createElement('span');
-                    progressBar.appendChild(progressSpan);
+                        const progressSpan = document.createElement('span');
+                        progressBar.appendChild(progressSpan);
 
-                    const progressText = document.createElement('div');
-                    progressText.classList.add('progress-text');
-                    downloadProgress.appendChild(progressText);
+                        const progressText = document.createElement('div');
+                        progressText.classList.add('progress-text');
+                        downloadProgress.appendChild(progressText);
 
-                    // Avvia il monitoraggio per tutti i download (sia running che completed/failed/queued)
-                    // Se il download è "queued", non avviamo il monitoraggio, ma solo la visualizzazione
-                    if (download.status !== 'queued') {
-                        updateDownloadProgress(download.anime_id, progressSpan, progressText);
+                        // Se il download è stato completato o fallito, lo mostriamo senza polling
+                        if (download.status === 'completed') {
+                            progressText.textContent = `${download.anime_name || 'Anime'}: Download completato!`;
+                            progressSpan.style.width = `${MAX_PROGRESS_WIDTH}px`; // Barra piena
+                        } else if (download.status === 'failed') {
+                            progressText.textContent = `${download.anime_name || 'Anime'}: Download fallito.`;
+                            progressSpan.style.width = `0px`; // Barra vuota
+                        }
+
                     } else {
-                        progressText.textContent = `${download.anime_name || 'Anime'}: In attesa...`;
-                        progressSpan.style.width = `0px`; // La barra rimane vuota per "queued"
+                        // Se il download è "queued", non avviamo il monitoraggio, ma solo la visualizzazione
+                        const downloadProgress = document.createElement('div');
+                        downloadProgress.classList.add('download-progress');
+                        downloadProgress.setAttribute('id', `progress_${download.anime_id}`);
+                        progressContainer.appendChild(downloadProgress);
+
+                        const progressBar = document.createElement('div');
+                        progressBar.classList.add('progress-bar');
+                        downloadProgress.appendChild(progressBar);
+
+                        const progressSpan = document.createElement('span');
+                        progressBar.appendChild(progressSpan);
+
+                        const progressText = document.createElement('div');
+                        progressText.classList.add('progress-text');
+                        downloadProgress.appendChild(progressText);
+
+                        if (download.status === 'queued') {
+                            progressText.textContent = `${download.anime_name || 'Anime'}: In attesa...`;
+                            progressSpan.style.width = `0px`; // La barra rimane vuota per "queued"
+                        } else {
+                            updateDownloadProgress(download.anime_id, progressSpan, progressText);
+                        }
                     }
                 });
             }
