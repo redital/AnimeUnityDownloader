@@ -27,16 +27,6 @@ function initializeEventListeners() {
     darkModeToggle.addEventListener('click', toggleDarkMode);
   }
 
-  // NAS buttons
-  const nasPowerOnBtn = document.getElementById('nasPowerOnBtn');
-  if (nasPowerOnBtn) nasPowerOnBtn.addEventListener('click', nasPowerOn);
-
-  const nasPowerOffBtn = document.getElementById('nasPowerOffBtn');
-  if (nasPowerOffBtn) nasPowerOffBtn.addEventListener('click', nasPowerOff);
-
-  const nasRemountBtn = document.getElementById('nasRemountBtn');
-  if (nasRemountBtn) nasRemountBtn.addEventListener('click', nasRemount);
-
   // Download control buttons
   const pauseAllBtn = document.getElementById('pauseAllBtn');
   if (pauseAllBtn) pauseAllBtn.addEventListener('click', pauseAllDownloads);

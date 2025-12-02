@@ -8,7 +8,6 @@ from anime_downloader import process_anime_download ,fetch_page_httpx
 from src.crawler.crawler import Crawler
 
 from logger import get_logger
-from web_app.nas_power_manager import nas_manager, nas_power_on
 
 
 logger = get_logger(__name__)
@@ -102,11 +101,6 @@ def progress_callback(anime_id, episode_idx, value):
 
         info["overall_percent"] = overall
 
-def power_check_before_download():
-    nas_online, mount_ok = nas_manager.get_nas_status()
-    logger.info(f"NAS status - Online: {nas_online}, Mount OK: {mount_ok}")
-
-    return nas_power_on(nas_online, mount_ok)
 
 def start_download(params):
     anime_id = params.get("anime_id")
@@ -118,13 +112,6 @@ def start_download(params):
         return {"status": "error", "message": message}, 404
 
     logger.info(f"Resource available for anime_id {anime_id}: {anime_name} with {n_episodes} episodes.")
-    
-    logger.info("Verifying NAS status before starting download.")
-    power_check = power_check_before_download()
-    if power_check[1] != 200:
-        return power_check
-    
-    logger.info("NAS is ready. Proceeding with download.")
 
     path = None
     if params.get('custom_path'):

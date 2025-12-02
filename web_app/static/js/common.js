@@ -5,7 +5,6 @@
 // ===== CONSTANTS =====
 const MAX_PROGRESS_WIDTH = 400;
 const POLLING_INTERVAL = 1000; // ms
-const NAS_POLLING_INTERVAL = 30 * 1000; // 30 secondi
 
 // ===== SHARED STATE =====
 const completedDownloads = new Set();

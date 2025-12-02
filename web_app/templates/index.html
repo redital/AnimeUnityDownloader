@@ -17,20 +17,9 @@
         <!-- Messaggio di risultato -->
         <div id="resultMessage" style="display: none;"></div>
 
-        <!-- Layout 3 colonne: NAS | Downloads | Controlli -->
+        <!-- Layout 2 colonne: Downloads | Controlli -->
         <div class="layout">
-            <!-- COLONNA SINISTRA: NAS Status -->
-            <div class="section" id="nasSection">
-                <h2>NAS Status</h2>
-                <div id="nasStatusContainer">Caricamento stato NAS...</div>
-                <div id="nasControls">
-                    <button type="button" id="nasPowerOnBtn">Accendi NAS</button>
-                    <button type="button" id="nasPowerOffBtn">Spegni NAS</button>
-                    <button type="button" id="nasRemountBtn">Ripara Share</button>
-                </div>
-            </div>
-
-            <!-- COLONNA CENTRALE: Download Progress -->
+            <!-- COLONNA SINISTRA: Download Progress -->
             <div class="section" id="progressSection">
                 <h2>Download Progress</h2>
                 <div id="allDownloadProgressContainer">
@@ -75,7 +64,6 @@
 
     <!-- Modular JavaScript imports -->
     <script src="{{ url_for('static', filename='js/common.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/nas.js') }}"></script>
     <script src="{{ url_for('static', filename='js/downloads.js') }}"></script>
     <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
 </body>

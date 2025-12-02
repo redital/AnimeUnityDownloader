@@ -182,7 +182,6 @@ async function cancelSingleDownload(anime_id) {
     const result = await apiCall(`/download/${anime_id}/cancel`, 'POST');
     showMessage(result.message || 'Download annullato', 'success');
     await updateAllDownloadProgress();
-    await fetchNasStatus();
   } catch (error) {
     showMessage(`Errore: ${error.message}`, 'error');
   }
@@ -196,7 +195,6 @@ async function pauseAllDownloads() {
     const result = await apiCall('/downloads/pause', 'POST');
     showMessage(result.message || 'Tutti i download messi in pausa', 'success');
     await updateAllDownloadProgress();
-    await fetchNasStatus();
   } catch (error) {
     showMessage(`Errore: ${error.message}`, 'error');
   }
@@ -210,7 +208,6 @@ async function resumeAllDownloads() {
     const result = await apiCall('/downloads/resume', 'POST');
     showMessage(result.message || 'Tutti i download ripresi', 'success');
     await updateAllDownloadProgress();
-    await fetchNasStatus();
   } catch (error) {
     showMessage(`Errore: ${error.message}`, 'error');
   }
@@ -226,7 +223,6 @@ async function cancelAllDownloads() {
     const result = await apiCall('/downloads/cancel', 'POST');
     showMessage(result.message || 'Tutti i download annullati', 'success');
     await updateAllDownloadProgress();
-    await fetchNasStatus();
   } catch (error) {
     showMessage(`Errore: ${error.message}`, 'error');
   }
