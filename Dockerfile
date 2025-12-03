@@ -3,7 +3,7 @@ FROM python:3.11
 
 # Installazione di VLC e altre dipendenze (se non già incluse nel tuo codice)
 RUN apt-get update && \
-    apt-get install -y ping && \
+    apt-get install -y iputils-ping && \
     rm -rf /var/lib/apt/lists/*
 
 # Impostazioni di lavoro
