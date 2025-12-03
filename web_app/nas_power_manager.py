@@ -18,7 +18,6 @@ nas_manager = NASPowerManager(
     omv_user=omv_user,
     omv_password=omv_password,
     omv_host=nas_host_name,
-    nas_ip=nas_host_name,
     mount_path=mount_path,
     ssh_host=ssh_host,
     ssh_user=ssh_user,

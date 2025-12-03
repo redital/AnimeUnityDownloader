@@ -16,7 +16,6 @@ class NASPowerManager:
         omv_user: str,
         omv_password: str,
         omv_host: str,
-        nas_ip: str = None,
         mount_path: str = None,
         ssh_host: str = None,
         ssh_user: str = None,
@@ -27,7 +26,6 @@ class NASPowerManager:
         :param omv_user: Username admin OMV
         :param omv_password: Password OMV
         :param omv_host: Hostname o IP OMV (es: 192.168.1.100)
-        :param nas_ip: IP del NAS per il ping (opzionale)
         :param mount_path: Path della cartella montata (opzionale)
         :param ssh_host: Hostname o IP dell'host su cui eseguire il remount via SSH (opzionale)
         :param ssh_user: Username SSH per l'host (opzionale)
@@ -37,7 +35,6 @@ class NASPowerManager:
         self.omv_user = omv_user
         self.omv_password = omv_password
         self.omv_host = omv_host
-        self.nas_ip = nas_ip
         self.mount_path = mount_path
         self.ssh_host = ssh_host
         self.ssh_user = ssh_user
