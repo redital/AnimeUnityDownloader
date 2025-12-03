@@ -12,7 +12,7 @@ services:
       - FLASK_PORT=${FLASK_PORT:-5000}
       - SSL_CONTEXT=${SSL_CONTEXT:-None}
     ports:
-      - "8223:${FLASK_PORT}"
+      - "8222:${FLASK_PORT}"
     restart: unless-stopped
     build: .
     pull_policy: build
