@@ -95,8 +95,17 @@ async function updateAllDownloadProgress() {
         cancelBtn.classList.add('cancel-btn', 'danger');
         cancelBtn.textContent = '✕';
         cancelBtn.onclick = async () => {
-          if (showConfirm('Vuoi annullare questo download?')) {
-            await cancelSingleDownload(download.anime_id);
+          // Comportamento duale: se il download è ancora attivo -> annulla,
+          // altrimenti rimuovi il task dalla lista.
+          const status = (download && download.status) || '';
+          if (status === 'running' || status === 'queued' || status === 'paused') {
+            if (showConfirm('Vuoi annullare questo download?')) {
+              await cancelSingleDownload(download.anime_id);
+            }
+          } else {
+            if (showConfirm('Rimuovere questo task dalla lista?')) {
+              await removeSingleTask(download.anime_id);
+            }
           }
         };
 
@@ -118,7 +127,8 @@ async function updateAllDownloadProgress() {
             progressText.innerHTML = `<span class="anime-name">${download.anime_name || 'Anime'}</span><span class="progress-percent">Annullato</span>`;
             progressSpan.style.width = `0px`;
           }
-          cancelBtn.disabled = true;
+          // Allow removal of finished/failed/cancelled tasks
+          cancelBtn.disabled = false;
           progressText.appendChild(cancelBtn);
         } else if (download.status === 'queued') {
           progressText.innerHTML = `<span class="anime-name">${download.anime_name || 'Anime'}</span><span class="progress-percent">In attesa...</span>`;
@@ -135,6 +145,35 @@ async function updateAllDownloadProgress() {
     }
   } catch (error) {
     console.error('Errore nel recupero degli stati dei download:', error);
+  }
+}
+
+
+/**
+ * Rimuove un singolo task (solo se è terminato / fallito / annullato)
+ */
+async function removeSingleTask(anime_id) {
+  try {
+    const res = await apiCall(`/download/${anime_id}/remove`, 'POST');
+    showMessage(res.message || 'Task rimosso', 'success');
+    await updateAllDownloadProgress();
+  } catch (error) {
+    showMessage(`Errore: ${error.message}`, 'error');
+  }
+}
+
+
+/**
+ * Pulisce tutti i task completati/falliti/annullati
+ */
+async function clearFinishedTasks() {
+  if (!showConfirm('Vuoi rimuovere tutti i task completati/annullati/errore dalla lista?')) return;
+  try {
+    const res = await apiCall('/downloads/cleanup', 'POST');
+    showMessage(res.message || 'Lista ripulita', 'success');
+    await updateAllDownloadProgress();
+  } catch (error) {
+    showMessage(`Errore: ${error.message}`, 'error');
   }
 }
 

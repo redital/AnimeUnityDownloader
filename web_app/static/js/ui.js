@@ -52,6 +52,10 @@ function initializeEventListeners() {
 
   const cancelAllBtn = document.getElementById('cancelAllBtn');
   if (cancelAllBtn) cancelAllBtn.addEventListener('click', cancelAllDownloads);
+
+  // Clear finished tasks
+  const clearFinishedBtn = document.getElementById('clearFinishedBtn');
+  if (clearFinishedBtn) clearFinishedBtn.addEventListener('click', clearFinishedTasks);
 }
 
 // Inizializza gli event listener al caricamento della pagina

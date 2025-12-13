@@ -251,6 +251,33 @@ def cancel_download(anime_id):
         info['finished_at'] = time.time()
     return {"status": "success", "message": f"Download {anime_id} annullato"}, 200
 
+
+def remove_download(anime_id):
+    """Rimuove il task di download dalla lista se non è attivo.
+    Non permette la rimozione di task in stato 'running', 'queued' o 'paused'.
+    """
+    with downloads_lock:
+        info = downloads_status.get(anime_id)
+        if not info:
+            return {"status": "error", "message": "Download non trovato"}, 404
+        if info.get('status') in ('running', 'queued', 'paused'):
+            return {"status": "error", "message": "Impossibile rimuovere un task ancora attivo"}, 400
+        # rimuovi l'entry
+        del downloads_status[anime_id]
+    return {"status": "success", "message": f"Download {anime_id} rimosso"}, 200
+
+
+def cleanup_finished_downloads():
+    """Rimuove tutti i task con stato completed, failed o cancelled."""
+    removed = []
+    with downloads_lock:
+        keys = list(downloads_status.keys())
+        for k in keys:
+            if downloads_status[k].get('status') in ('completed', 'failed', 'cancelled'):
+                del downloads_status[k]
+                removed.append(k)
+    return {"status": "success", "message": f"Rimosse {len(removed)} task", "removed": removed}, 200
+
 def get_download_status(anime_id):
     with downloads_lock:
         info = downloads_status.get(anime_id)

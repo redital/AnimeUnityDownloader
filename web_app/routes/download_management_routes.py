@@ -4,6 +4,8 @@ from web_app.download_manager import (
     resume_all_downloads,
     cancel_all_downloads,
     cancel_download,
+    remove_download,
+    cleanup_finished_downloads,
 )
 
 download_management_routes = Blueprint('download_management', __name__)
@@ -29,6 +31,18 @@ def cancel_downloads_route():
 @download_management_routes.route('/download/<anime_id>/cancel', methods=['POST'])
 def cancel_single_download_route(anime_id):
     result, status_code = cancel_download(anime_id)
+    return jsonify(result), status_code
+
+
+@download_management_routes.route('/download/<anime_id>/remove', methods=['POST'])
+def remove_single_download_route(anime_id):
+    result, status_code = remove_download(anime_id)
+    return jsonify(result), status_code
+
+
+@download_management_routes.route('/downloads/cleanup', methods=['POST'])
+def cleanup_finished_route():
+    result, status_code = cleanup_finished_downloads()
     return jsonify(result), status_code
 
 
