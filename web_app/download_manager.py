@@ -108,7 +108,7 @@ def power_check_before_download():
 
     return nas_power_on(nas_online, mount_ok)
 
-def start_download(params):
+def start_download(params, force=False):
     anime_id = params.get("anime_id")
     base_path = os.getcwd()
 
@@ -119,12 +119,15 @@ def start_download(params):
 
     logger.info(f"Resource available for anime_id {anime_id}: {anime_name} with {n_episodes} episodes.")
     
-    logger.info("Verifying NAS status before starting download.")
-    power_check = power_check_before_download()
-    if power_check[1] != 200:
-        return power_check
-    
-    logger.info("NAS is ready. Proceeding with download.")
+    # Esegui controllo NAS solo se force=False
+    if not force:
+        logger.info("Verifying NAS status before starting download.")
+        power_check = power_check_before_download()
+        if power_check[1] != 200:
+            return power_check
+        logger.info("NAS is ready. Proceeding with download.")
+    else:
+        logger.info("Force mode enabled - skipping NAS status check.")
 
     path = None
     if params.get('custom_path'):

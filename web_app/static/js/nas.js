@@ -53,6 +53,15 @@ async function updateNasButtonStates(nasData) {
     const offBtn = document.getElementById('nasPowerOffBtn');
     const remountBtn = document.getElementById('nasRemountBtn');
 
+    // Se modalità manuale è attiva, tutti i pulsanti rimangono sempre disponibili
+    if (isManualModeActive && isManualModeActive()) {
+      if (onBtn) onBtn.disabled = false;
+      if (offBtn) offBtn.disabled = false;
+      if (remountBtn) remountBtn.disabled = false;
+      return;
+    }
+
+    // Altrimenti, applica la logica normale di disabilitazione
     // Power on: enabled se NAS è offline
     if (onBtn) onBtn.disabled = nasData.online;
 

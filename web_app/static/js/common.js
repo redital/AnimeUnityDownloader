@@ -49,6 +49,47 @@ function loadDarkModePreference() {
 }
 
 /**
+ * Toggle modalità manuale - quando attiva, tutti i controlli rimangono disponibili
+ */
+function toggleManualMode() {
+  const isManual = localStorage.getItem('manualMode') === 'true';
+  localStorage.setItem('manualMode', isManual ? 'false' : 'true');
+  updateManualModeUI();
+}
+
+/**
+ * Verifica se la modalità manuale è attiva
+ */
+function isManualModeActive() {
+  return localStorage.getItem('manualMode') === 'true';
+}
+
+/**
+ * Aggiorna l'UI del bottone modalità manuale
+ */
+function updateManualModeUI() {
+  const button = document.getElementById('manualModeToggle');
+  const isManual = isManualModeActive();
+  
+  if (button) {
+    button.textContent = isManual ? '📌 Modalità Manuale: ON' : '📌 Modalità Manuale: OFF';
+    button.classList.toggle('active', isManual);
+  }
+  
+  // Forza refresh dei controlli NAS quando cambia la modalità
+  if (typeof fetchNasStatus === 'function') {
+    fetchNasStatus();
+  }
+}
+
+/**
+ * Carica le preferenze di modalità manuale al startup
+ */
+function loadManualModePreference() {
+  updateManualModeUI();
+}
+
+/**
  * Mostra una conferma
  */
 function showConfirm(message) {
@@ -81,4 +122,7 @@ async function apiCall(url, method = 'GET', body = null) {
 }
 
 // Carica preferenze al caricamento
-window.addEventListener('load', loadDarkModePreference);
+window.addEventListener('load', () => {
+  loadDarkModePreference();
+  loadManualModePreference();
+});

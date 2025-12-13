@@ -156,6 +156,10 @@ async function startDownload() {
   if (start_episode) query.append('start_episode', start_episode);
   if (end_episode) query.append('end_episode', end_episode);
   if (custom_path) query.append('custom_path', custom_path);
+  
+  // Aggiungi parametro 'force' basato sulla modalità manuale
+  const forceMode = isManualModeActive && isManualModeActive();
+  query.append('force', forceMode ? 'true' : 'false');
 
   try {
     const data = await apiCall(`/download/${anime_id}?${query.toString()}`, 'GET');

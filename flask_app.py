@@ -29,10 +29,13 @@ def download_anime(anime_id):
         "custom_path": request.args.get('custom_path')
     }
 
-    logger.info(f"Request received for download: {params}")
+    # Estrai parametro 'force' - di default False
+    force = request.args.get('force', 'false').lower() == 'true'
+
+    logger.info(f"Request received for download: {params} (force={force})")
 
     try:
-        result, status_code = start_download(params)
+        result, status_code = start_download(params, force=force)
     except Exception as e:
         logger.exception("Errore durante l'avvio del download:")
         return jsonify({

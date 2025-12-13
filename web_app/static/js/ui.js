@@ -27,6 +27,12 @@ function initializeEventListeners() {
     darkModeToggle.addEventListener('click', toggleDarkMode);
   }
 
+  // Manual mode toggle
+  const manualModeToggle = document.getElementById('manualModeToggle');
+  if (manualModeToggle) {
+    manualModeToggle.addEventListener('click', toggleManualMode);
+  }
+
   // NAS buttons
   const nasPowerOnBtn = document.getElementById('nasPowerOnBtn');
   if (nasPowerOnBtn) nasPowerOnBtn.addEventListener('click', nasPowerOn);

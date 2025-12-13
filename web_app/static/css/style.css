@@ -72,7 +72,14 @@ h1, h2, h3, h4, h5, h6 {
   margin: 0;
 }
 
-.dark-mode-toggle {
+.header-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.dark-mode-toggle,
+.mode-toggle {
   background-color: var(--color-button-bg);
   color: var(--color-button-text);
   border: none;
@@ -80,11 +87,18 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
-  transition: background-color 0.3s;
+  transition: background-color 0.3s, box-shadow 0.3s;
 }
 
-.dark-mode-toggle:hover {
+.dark-mode-toggle:hover,
+.mode-toggle:hover {
   background-color: var(--color-button-hover);
+}
+
+.mode-toggle.active {
+  background-color: var(--color-warning);
+  box-shadow: 0 0 8px var(--color-warning);
+  font-weight: bold;
 }
 
 .layout {
