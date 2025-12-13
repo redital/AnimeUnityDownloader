@@ -12,42 +12,46 @@ function updateDownloadProgress(anime_id, progressSpan, progressText, cancelBtn)
 
   const intervalId = setInterval(async function () {
     try {
-      const data = await apiCall(`/download-status/${anime_id}`, 'GET');
+      const data = await apiCall(`/download-status/${anime_id}`, 'GET', null, false); // Senza spinner
 
       if (data.status === 'success') {
         const info = data.data;
         const animeName = info.anime_name || 'Anime';
 
-        // Limita la percentuale a 100%
-        const progressWidth = Math.min((info.overall_percent / 100) * MAX_PROGRESS_WIDTH, MAX_PROGRESS_WIDTH);
-        progressSpan.style.width = `${progressWidth}px`;
+        // Aggiorna la barra in-place con transizione smooth
+        const percentValue = Math.min(Math.round(info.overall_percent), 100);
+        const progressPercent = (percentValue / 100) * 100; // Percentuale per width
+        progressSpan.style.width = `${progressPercent}%`;
 
         // Aggiorna il testo in base allo stato
         if (info.status === 'running') {
-          progressText.innerHTML = `<span class="anime-name">${animeName}</span><span class="progress-percent">${Math.min(Math.round(info.overall_percent), 100)}% completato</span>`;
+          progressText.innerHTML = `<span class="anime-name">${animeName}</span><span class="progress-percent">${percentValue}% completato</span>`;
         } else if (info.status === 'paused') {
-          progressText.innerHTML = `<span class="anime-name">${animeName}</span><span class="progress-percent">In pausa - ${Math.min(Math.round(info.overall_percent), 100)}%</span>`;
+          progressText.innerHTML = `<span class="anime-name">${animeName}</span><span class="progress-percent">In pausa - ${percentValue}%</span>`;
         } else if (info.status === 'completed') {
           progressText.innerHTML = `<span class="anime-name">${animeName}</span><span class="progress-percent">Completato!</span>`;
-          progressSpan.style.width = `${MAX_PROGRESS_WIDTH}px`;
+          progressSpan.classList.add('final-state');
+          progressSpan.style.width = '100%';
           clearInterval(intervalId);
           completedDownloads.add(anime_id);
-          updateAllDownloadProgress();
+          await updateAllDownloadProgress();
         } else if (info.status === 'failed') {
           progressText.innerHTML = `<span class="anime-name">${animeName}</span><span class="progress-percent">Errore</span>`;
-          progressSpan.style.width = `0px`;
+          progressSpan.classList.add('final-state');
+          progressSpan.style.width = '0px';
           clearInterval(intervalId);
           completedDownloads.add(anime_id);
-          updateAllDownloadProgress();
+          await updateAllDownloadProgress();
         } else if (info.status === 'cancelled') {
           progressText.innerHTML = `<span class="anime-name">${animeName}</span><span class="progress-percent">Annullato</span>`;
-          progressSpan.style.width = `0px`;
+          progressSpan.classList.add('final-state');
+          progressSpan.style.width = '0px';
           clearInterval(intervalId);
           completedDownloads.add(anime_id);
-          updateAllDownloadProgress();
+          await updateAllDownloadProgress();
         } else if (info.status === 'queued') {
           progressText.innerHTML = `<span class="anime-name">${animeName}</span><span class="progress-percent">In attesa...</span>`;
-          progressSpan.style.width = `0px`;
+          progressSpan.style.width = '0px';
         }
 
         // Aggiorna lo stato del pulsante di cancel
@@ -67,81 +71,109 @@ function updateDownloadProgress(anime_id, progressSpan, progressText, cancelBtn)
  */
 async function updateAllDownloadProgress() {
   try {
-    const data = await apiCall('/download-statuses', 'GET');
+    const data = await apiCall('/download-statuses', 'GET', null, false); // Senza spinner durante refresh periodici
 
     if (data.status === 'success') {
       const downloads = data.data;
       const progressContainer = document.getElementById('allDownloadProgressContainer');
       if (!progressContainer) return;
 
-      progressContainer.innerHTML = '';
+      // Mantieni gli elementi esistenti per evitare flicker
+      // Calcola quali anime_id sono presenti nel container
+      const existingElements = {};
+      progressContainer.querySelectorAll('[data-anime-id]').forEach(el => {
+        const animeId = el.getAttribute('data-anime-id');
+        existingElements[animeId] = el;
+      });
 
+      // Processa ogni download
       downloads.forEach(download => {
-        const downloadProgress = document.createElement('div');
-        downloadProgress.classList.add('download-progress');
-        downloadProgress.setAttribute('id', `progress_${download.anime_id}`);
+        let downloadProgress = existingElements[download.anime_id];
+        
+        // Se non esiste, crealo
+        if (!downloadProgress) {
+          downloadProgress = document.createElement('div');
+          downloadProgress.classList.add('download-progress');
+          downloadProgress.setAttribute('data-anime-id', download.anime_id);
 
-        const progressBar = document.createElement('div');
-        progressBar.classList.add('progress-bar');
+          const progressBar = document.createElement('div');
+          progressBar.classList.add('progress-bar');
 
-        const progressSpan = document.createElement('span');
-        progressBar.appendChild(progressSpan);
+          const progressSpan = document.createElement('span');
+          progressBar.appendChild(progressSpan);
 
-        const progressText = document.createElement('div');
-        progressText.classList.add('progress-text');
+          const progressText = document.createElement('div');
+          progressText.classList.add('progress-text');
 
-        // Crea il pulsante di cancel
-        const cancelBtn = document.createElement('button');
-        cancelBtn.classList.add('cancel-btn', 'danger');
-        cancelBtn.textContent = '✕';
-        cancelBtn.onclick = async () => {
-          // Comportamento duale: se il download è ancora attivo -> annulla,
-          // altrimenti rimuovi il task dalla lista.
-          const status = (download && download.status) || '';
-          if (status === 'running' || status === 'queued' || status === 'paused') {
-            if (showConfirm('Vuoi annullare questo download?')) {
-              await cancelSingleDownload(download.anime_id);
+          const cancelBtn = document.createElement('button');
+          cancelBtn.classList.add('cancel-btn', 'danger');
+          cancelBtn.textContent = '✕';
+          cancelBtn.setAttribute('data-anime-id', download.anime_id);
+          cancelBtn.onclick = async function() {
+            const animeId = this.getAttribute('data-anime-id');
+            const status = downloadProgress.getAttribute('data-status');
+            
+            if (status === 'running' || status === 'queued' || status === 'paused') {
+              if (showConfirm('Vuoi annullare questo download?')) {
+                await cancelSingleDownload(animeId);
+              }
+            } else {
+              if (showConfirm('Rimuovere questo task dalla lista?')) {
+                await removeSingleTask(animeId);
+              }
             }
-          } else {
-            if (showConfirm('Rimuovere questo task dalla lista?')) {
-              await removeSingleTask(download.anime_id);
-            }
-          }
-        };
+          };
 
-        downloadProgress.appendChild(progressBar);
-        downloadProgress.appendChild(progressText);
-        progressText.appendChild(cancelBtn);
+          downloadProgress.appendChild(progressBar);
+          downloadProgress.appendChild(progressText);
+          downloadProgress.appendChild(cancelBtn);
 
-        progressContainer.appendChild(downloadProgress);
+          progressContainer.appendChild(downloadProgress);
+          delete existingElements[download.anime_id];
+        }
 
+        // Aggiorna lo stato del download in-place
+        const progressBar = downloadProgress.querySelector('.progress-bar');
+        const progressSpan = progressBar.querySelector('span');
+        const progressText = downloadProgress.querySelector('.progress-text');
+        const cancelBtn = downloadProgress.querySelector('.cancel-btn');
+
+        // Mantieni i colori: non ricreate la barra
+        const statusAttr = downloadProgress.getAttribute('data-status');
+        downloadProgress.setAttribute('data-status', download.status);
+
+        // Aggiorna il contenuto della barra e del testo
         if (completedDownloads.has(download.anime_id)) {
           // Download completato/fallito
           if (download.status === 'completed') {
             progressText.innerHTML = `<span class="anime-name">${download.anime_name || 'Anime'}</span><span class="progress-percent">Completato!</span>`;
-            progressSpan.style.width = `${MAX_PROGRESS_WIDTH}px`;
+            if (!progressSpan.classList.contains('final-state')) {
+              progressSpan.classList.add('final-state');
+            }
+            progressSpan.style.width = '100%';
           } else if (download.status === 'failed') {
             progressText.innerHTML = `<span class="anime-name">${download.anime_name || 'Anime'}</span><span class="progress-percent">Errore</span>`;
-            progressSpan.style.width = `0px`;
+            progressSpan.classList.add('final-state');
+            progressSpan.style.width = '0px';
           } else if (download.status === 'cancelled') {
             progressText.innerHTML = `<span class="anime-name">${download.anime_name || 'Anime'}</span><span class="progress-percent">Annullato</span>`;
-            progressSpan.style.width = `0px`;
+            progressSpan.classList.add('final-state');
+            progressSpan.style.width = '0px';
           }
-          // Allow removal of finished/failed/cancelled tasks
-          cancelBtn.disabled = false;
-          progressText.appendChild(cancelBtn);
+          cancelBtn.disabled = false; // Permetti rimozione
         } else if (download.status === 'queued') {
           progressText.innerHTML = `<span class="anime-name">${download.anime_name || 'Anime'}</span><span class="progress-percent">In attesa...</span>`;
-          progressSpan.style.width = `0px`;
+          progressSpan.style.width = '0px';
           cancelBtn.disabled = false;
-          progressText.appendChild(cancelBtn);
-        } else {
-          // Running or paused - inizio il polling
+        } else if (download.status === 'running' || download.status === 'paused') {
+          // Aggiorna il progresso tramite polling continuo
           cancelBtn.disabled = false;
-          progressText.appendChild(cancelBtn);
           updateDownloadProgress(download.anime_id, progressSpan, progressText, cancelBtn);
         }
       });
+
+      // Rimuovi gli elementi per anime che non sono più nella lista
+      Object.values(existingElements).forEach(el => el.remove());
     }
   } catch (error) {
     console.error('Errore nel recupero degli stati dei download:', error);
@@ -154,9 +186,9 @@ async function updateAllDownloadProgress() {
  */
 async function removeSingleTask(anime_id) {
   try {
-    const res = await apiCall(`/download/${anime_id}/remove`, 'POST');
+    const res = await apiCall(`/download/${anime_id}/remove`, 'POST', null, true, 'Rimuovendo task...');
     showMessage(res.message || 'Task rimosso', 'success');
-    await updateAllDownloadProgress();
+    await updateAllDownloadProgress(); // Attendi il refresh immediato della lista
   } catch (error) {
     showMessage(`Errore: ${error.message}`, 'error');
   }
@@ -169,7 +201,7 @@ async function removeSingleTask(anime_id) {
 async function clearFinishedTasks() {
   if (!showConfirm('Vuoi rimuovere tutti i task completati/annullati/errore dalla lista?')) return;
   try {
-    const res = await apiCall('/downloads/cleanup', 'POST');
+    const res = await apiCall('/downloads/cleanup', 'POST', null, true, 'Pulendo la lista...');
     showMessage(res.message || 'Lista ripulita', 'success');
     await updateAllDownloadProgress();
   } catch (error) {
@@ -201,14 +233,14 @@ async function startDownload() {
   query.append('force', forceMode ? 'true' : 'false');
 
   try {
-    const data = await apiCall(`/download/${anime_id}?${query.toString()}`, 'GET');
+    const data = await apiCall(`/download/${anime_id}?${query.toString()}`, 'GET', null, true, 'Avviando download...');
 
     if (data.status === 'success') {
       showMessage('Download avviato con successo!', 'success');
       document.getElementById('anime_id').value = '';
       document.getElementById('start_episode').value = '';
       document.getElementById('end_episode').value = '';
-      updateAllDownloadProgress();
+      await updateAllDownloadProgress(); // Attendi il refresh immediato della lista
     } else {
       showMessage(`Errore: ${data.message}`, 'error');
     }
@@ -222,7 +254,7 @@ async function startDownload() {
  */
 async function cancelSingleDownload(anime_id) {
   try {
-    const result = await apiCall(`/download/${anime_id}/cancel`, 'POST');
+    const result = await apiCall(`/download/${anime_id}/cancel`, 'POST', null, true, 'Annullando download...');
     showMessage(result.message || 'Download annullato', 'success');
     await updateAllDownloadProgress();
     await fetchNasStatus();
@@ -236,7 +268,7 @@ async function cancelSingleDownload(anime_id) {
  */
 async function pauseAllDownloads() {
   try {
-    const result = await apiCall('/downloads/pause', 'POST');
+    const result = await apiCall('/downloads/pause', 'POST', null, true, 'Mettendo in pausa i download...');
     showMessage(result.message || 'Tutti i download messi in pausa', 'success');
     await updateAllDownloadProgress();
     await fetchNasStatus();
@@ -250,7 +282,7 @@ async function pauseAllDownloads() {
  */
 async function resumeAllDownloads() {
   try {
-    const result = await apiCall('/downloads/resume', 'POST');
+    const result = await apiCall('/downloads/resume', 'POST', null, true, 'Riprendendo i download...');
     showMessage(result.message || 'Tutti i download ripresi', 'success');
     await updateAllDownloadProgress();
     await fetchNasStatus();
@@ -266,7 +298,7 @@ async function cancelAllDownloads() {
   if (!showConfirm('Sei sicuro di voler annullare TUTTI i download?')) return;
 
   try {
-    const result = await apiCall('/downloads/cancel', 'POST');
+    const result = await apiCall('/downloads/cancel', 'POST', null, true, 'Annullando tutti i download...');
     showMessage(result.message || 'Tutti i download annullati', 'success');
     await updateAllDownloadProgress();
     await fetchNasStatus();
@@ -278,5 +310,5 @@ async function cancelAllDownloads() {
 // Inizializza al caricamento della pagina
 window.addEventListener('load', () => {
   updateAllDownloadProgress();
-  setInterval(updateAllDownloadProgress, 5000); // Aggiorna lista ogni 5 secondi
+  setInterval(updateAllDownloadProgress, 3000); // Aggiorna lista ogni 3 secondi (più frequente)
 });

@@ -13,20 +13,25 @@ const completedDownloads = new Set();
 // ===== UTILITY FUNCTIONS =====
 
 /**
- * Mostra un messaggio di risultato
+ * Mostra un messaggio di risultato (con bottone X per chiudere, senza auto-hide)
  */
 function showMessage(message, type = 'success') {
   const resultMessage = document.getElementById('resultMessage');
-  if (!resultMessage) return;
+  const resultMessageText = document.getElementById('resultMessageText');
+  const resultMessageClose = document.getElementById('resultMessageClose');
+  
+  if (!resultMessage || !resultMessageText) return;
 
-  resultMessage.textContent = message;
+  resultMessageText.textContent = message;
   resultMessage.className = type; // 'success' o 'error'
   resultMessage.style.display = 'block';
 
-  // Auto-hide dopo 5 secondi
-  setTimeout(() => {
-    resultMessage.style.display = 'none';
-  }, 5000);
+  // Attach close handler
+  if (resultMessageClose) {
+    resultMessageClose.onclick = () => {
+      resultMessage.style.display = 'none';
+    };
+  }
 }
 
 /**
@@ -97,9 +102,32 @@ function showConfirm(message) {
 }
 
 /**
- * Fetch helper con gestione errori
+ * Mostra lo spinner di loading
  */
-async function apiCall(url, method = 'GET', body = null) {
+function showLoading(message = 'Caricamento...') {
+  const overlay = document.getElementById('loadingOverlay');
+  const loadingText = document.getElementById('loadingText');
+  if (overlay) {
+    overlay.classList.add('show');
+    if (loadingText) loadingText.textContent = message;
+  }
+}
+
+/**
+ * Nasconde lo spinner di loading
+ */
+function hideLoading() {
+  const overlay = document.getElementById('loadingOverlay');
+  if (overlay) {
+    overlay.classList.remove('show');
+  }
+}
+
+/**
+ * Fetch helper con gestione errori e loading indicator
+ */
+async function apiCall(url, method = 'GET', body = null, showSpinner = true, loadingMessage = 'Caricamento...') {
+  if (showSpinner) showLoading(loadingMessage);
   try {
     const options = { method };
     if (body) {
@@ -118,6 +146,8 @@ async function apiCall(url, method = 'GET', body = null) {
   } catch (error) {
     console.error(`API error: ${url}`, error);
     throw error;
+  } finally {
+    if (showSpinner) hideLoading();
   }
 }
 

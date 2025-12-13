@@ -8,6 +8,14 @@
 </head>
 <body>
     <div class="container">
+        <!-- Loading overlay -->
+        <div id="loadingOverlay" class="loading-overlay">
+            <div class="loading-container">
+                <div class="spinner"></div>
+                <div class="loading-text" id="loadingText">Caricamento...</div>
+            </div>
+        </div>
+
         <!-- Header -->
         <div class="header">
             <h1>🎌 Anime Downloader</h1>
@@ -18,7 +26,10 @@
         </div>
 
         <!-- Messaggio di risultato -->
-        <div id="resultMessage" style="display: none;"></div>
+        <div id="resultMessage" style="display: none;">
+            <span id="resultMessageText"></span>
+            <button type="button" id="resultMessageClose" class="message-close-btn" style="float: right; background: none; border: none; color: inherit; cursor: pointer; font-size: 18px;">✕</button>
+        </div>
 
         <!-- Layout 3 colonne: NAS | Downloads | Controlli -->
         <div class="layout">
