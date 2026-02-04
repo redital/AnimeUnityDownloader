@@ -23,6 +23,10 @@ from brotli import error as BrotliError  # noqa: N812
 from bs4 import BeautifulSoup
 from cloudscraper import CloudScraper
 
+import ssl
+from requests.adapters import HTTPAdapter
+from urllib3.poolmanager import PoolManager
+
 from .config import (
     DEFAULT_HEADERS,
     ENCODING_HEADERS,
@@ -53,6 +57,17 @@ def prepare_cloudscraper_session() -> CloudScraper:
 
     # Disable SSL verification
     scraper.verify = False
+
+    # Configura un contesto SSL che ignora host e certificato
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
+    # Applica l'adapter standard di Requests con il contesto personalizzato
+    # CloudScraper lo accetta senza problemi essendo una sottoclasse di Session
+    adapter = HTTPAdapter(poolmanager=PoolManager(ssl_context=ctx))
+    scraper.mount('https://', adapter)
+    
     return scraper
 
 
