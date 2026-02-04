@@ -87,14 +87,19 @@ def validate_episode_range(
         logging.error(message)
         sys.exit(1)
 
+    
+
     if start_episode and (start_episode < 1 or start_episode > num_episodes):
+        raise IndexError(f"Start episode must be between 1 and {num_episodes}.")
         log_and_exit(f"Start episode must be between 1 and {num_episodes}.")
 
     if start_episode and end_episode:
         if start_episode > end_episode:
+            raise IndexError(f"Start episode must be between 1 and {num_episodes}.")
             log_and_exit("Start episode cannot be greater than end episode.")
 
         if end_episode > num_episodes:
+            raise IndexError(f"Start episode must be between 1 and {num_episodes}.")
             log_and_exit(f"End episode must be between 1 and {num_episodes}.")
 
 
