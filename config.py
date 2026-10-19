@@ -22,3 +22,6 @@ ssh_host = os.environ.get("SSH_HOST", "placeholder")
 ssh_user = os.environ.get("SSH_USER", "placeholder")
 ssh_password = os.environ.get("SSH_PASSWORD", "placeholder")
 
+
+animeunity_url = os.environ.get("ANIMEUNITY_URL", "https://www.animeunity.to")
+

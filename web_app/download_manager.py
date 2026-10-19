@@ -10,6 +10,8 @@ from src.crawler.crawler import Crawler
 from logger import get_logger
 from web_app.nas_power_manager import nas_manager, nas_power_on
 
+from config import animeunity_url
+
 
 logger = get_logger(__name__)
   
@@ -112,8 +114,7 @@ def start_download(params, force=False):
     anime_id = params.get("anime_id")
     base_path = os.getcwd()
 
-    # Verifica se la risorsa è disponibile
-    check, message, anime_name, n_episodes = new_check_resource_availability(f"https://www.animeunity.so/anime/{anime_id}")
+    check, message, anime_name, n_episodes = new_check_resource_availability(f"{animeunity_url}/anime/{anime_id}")
     if not check:
         return {"status": "error", "message": message}, 404
 
@@ -134,7 +135,7 @@ def start_download(params, force=False):
         path = os.path.join(base_path, params['custom_path'])
 
     process_anime_download_params = {
-        "url": f"https://www.animeunity.so/anime/{anime_id}",
+        "url": f"{animeunity_url}/anime/{anime_id}",
         "start_episode": int(params.get('start_episode')) if params.get('start_episode') else None,
         "end_episode": int(params.get('end_episode')) if params.get('end_episode') else None,
         "custom_path": path,
