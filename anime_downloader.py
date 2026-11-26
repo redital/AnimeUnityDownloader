@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import random
+import sys
 import time
 from pathlib import Path
 from urllib.parse import urlparse
@@ -28,7 +29,9 @@ from src.config import (
     parse_arguments,
 )
 from src.crawler.crawler import Crawler
+from src.crawler.crawler_utils import InvalidEpisodeRangeError
 from src.download_utils import (
+    DownloadHooks,
     get_episode_filename,
     remove_special_characters,
     run_in_parallel,
@@ -142,25 +145,37 @@ def download_anime(
     anime_name: str,
     episodes: list[tuple[str, str | None]],
     download_path: str,
+    hooks: DownloadHooks | None = None,
 ) -> None:
     """Download episodes of a specified anime from provided video URLs."""
     job_progress = create_progress_bar()
     progress_table = create_progress_table(anime_name, job_progress)
 
     with Live(progress_table, refresh_per_second=10):
-        run_in_parallel(process_video_url, episodes, job_progress, download_path)
+        run_in_parallel(
+            process_video_url,
+            episodes,
+            job_progress,
+            download_path,
+            hooks=hooks,
+        )
 
 
-async def process_anime_download(
+async def process_anime_download(  # pylint: disable=too-many-arguments
     url: str,
     episodes_range: tuple = (None, None),
     episodes: list[int] | None = None,
     custom_path: str | None = None,
     language: str = DEFAULT_LANGUAGE,
+    *,
+    hooks: DownloadHooks | None = None,
 ) -> None:
     """Process the download of an anime from the specified URL."""
-    soup = fetch_page_httpx(url)
-    crawler = Crawler(
+    # Blocking work runs in threads so that an event loop shared with other
+    # tasks (e.g. the web interface) is not blocked while downloading.
+    soup = await asyncio.to_thread(fetch_page_httpx, url)
+    crawler = await asyncio.to_thread(
+        Crawler,
         url=url,
         episodes_range=episodes_range,
         episodes=episodes,
@@ -170,7 +185,15 @@ async def process_anime_download(
     anime_name = crawler.extract_anime_name(soup, url)
     download_path = create_download_directory(anime_name, custom_path=custom_path)
     episodes = await crawler.collect_episodes()
-    download_anime(anime_name, episodes, download_path)
+    if hooks is not None and hooks.on_start is not None:
+        hooks.on_start(anime_name, len(episodes))
+    await asyncio.to_thread(
+        download_anime,
+        anime_name,
+        episodes,
+        download_path,
+        hooks,
+    )
 
 
 def parse_episodes_list(episodes_raw: list[str] | None) -> list[int] | None:
@@ -192,12 +215,16 @@ async def main() -> None:
     clear_terminal()
     args = parse_arguments()
     episodes = parse_episodes_list(args.episodes)
-    await process_anime_download(
-        args.url,
-        episodes_range=(args.start, args.end),
-        episodes=episodes,
-        custom_path=args.custom_path,
-    )
+    try:
+        await process_anime_download(
+            args.url,
+            episodes_range=(args.start, args.end),
+            episodes=episodes,
+            custom_path=args.custom_path,
+        )
+    except InvalidEpisodeRangeError as err:
+        logging.error("%s", err)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

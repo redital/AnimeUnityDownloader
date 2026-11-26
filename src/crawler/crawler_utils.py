@@ -77,26 +77,28 @@ def extract_name_from_title_tag(title_tag: Tag) -> str:
     return title_text.replace("AnimeUnity", "").replace("~", "").strip()
 
 
+class InvalidEpisodeRangeError(ValueError):
+    """Raised when the requested episode range is not valid for the anime."""
+
+
 def validate_episode_range(
     start_episode: int | None,
     end_episode: int | None,
     num_episodes: int,
 ) -> None:
     """Validate the episode range to ensure it is within acceptable bounds."""
-
-    def log_and_exit(message: str) -> None:
-        logging.error(message)
-        sys.exit(1)
-
     if start_episode and (start_episode < 1 or start_episode > num_episodes):
-        log_and_exit(f"Start episode must be between 1 and {num_episodes}.")
+        msg = f"Start episode must be between 1 and {num_episodes}."
+        raise InvalidEpisodeRangeError(msg)
 
     if start_episode and end_episode:
         if start_episode > end_episode:
-            log_and_exit("Start episode cannot be greater than end episode.")
+            msg = "Start episode cannot be greater than end episode."
+            raise InvalidEpisodeRangeError(msg)
 
         if end_episode > num_episodes:
-            log_and_exit(f"End episode must be between 1 and {num_episodes}.")
+            msg = f"End episode must be between 1 and {num_episodes}."
+            raise InvalidEpisodeRangeError(msg)
 
 
 def episode_in_range(num: str, start: int | None, end: int | None) -> bool:
