@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -19,6 +20,8 @@ from .config import (
 if TYPE_CHECKING:
     from requests import Response
     from rich.progress import Progress
+
+MANAGER_POLL_SECONDS = 0.01
 
 
 def remove_special_characters(input_string: str) -> str:
@@ -94,9 +97,12 @@ def manage_running_tasks(futures: dict, job_progress: Progress) -> None:
     """Manage the status of running tasks and update their progress."""
     while futures:
         for future in list(futures.keys()):
-            if future.running():
+            if future.running() or future.done():
                 task = futures.pop(future)
-                job_progress.update(task, visible=True)
+                if not future.done():
+                    job_progress.update(task, visible=True)
+        if futures:
+            time.sleep(MANAGER_POLL_SECONDS)
 
 
 def run_in_parallel(
