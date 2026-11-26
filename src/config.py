@@ -8,6 +8,8 @@ from argparse import ArgumentParser, Namespace
 
 from fake_useragent import UserAgent
 
+from .version import get_version_string
+
 # ============================
 # Paths and Files
 # ============================
@@ -21,6 +23,12 @@ URLS_FILE = "URLs.txt"         # The file containing URLs to process.
 DOWNLOAD_LINK_PATTERN = r"window\.downloadUrl\s*=\s*'(https?:\/\/[^\s']+)'"
 ANIME_NAME_PATTERN = r"/anime/\d+-(.+)$"
 
+# Regex patterns to rebuild the HLS master playlist URL when no direct link is exposed
+HLS_PLAYLIST_URL_PATTERN = r"url:\s*'(https?:\/\/[^\s']+\/playlist\/[^\s']+)'"
+HLS_TOKEN_PATTERN = r"'token':\s*'([^']+)'"  # noqa: S105
+HLS_EXPIRES_PATTERN = r"'expires':\s*'([^']+)'"
+HLS_CAN_PLAY_FHD_PATTERN = r"window\.canPlayFHD\s*=\s*true"
+
 # ============================
 # Download Settings
 # ============================
@@ -28,6 +36,8 @@ TASK_COLOR = "cyan"   # The color to be used for task-related messages.
 BATCH_SIZE = 120      # The maximum number of episodes the API allows per request.
 CRAWLER_WORKERS = 8   # The maximum number of worker threads for crawling tasks.
 DOWNLOAD_WORKERS = 2  # The maximum number of worker threads for downloading tasks.
+DOWNLOAD_QUALITIES = (1080, 720, 480)
+DEFAULT_LANGUAGE = "jpn"
 
 # Constants for file sizes, expressed in bytes
 KB = 1024
@@ -47,6 +57,7 @@ LARGE_FILE_CHUNK_SIZE = 2 * MB
 # HTTP / Network
 # ============================
 # HTTP status codes
+HTTP_STATUS_OK = 200
 HTTP_STATUS_FORBIDDEN = 403
 
 # Minimum content length to check if text is too short or missing basic HTML tags
@@ -114,6 +125,12 @@ def add_common_arguments(parser: ArgumentParser) -> None:
         default=None,
         help="The directory where the downloaded content will be saved.",
     )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=get_version_string(),
+        help="Show program's version and exit.",
+    )
 
 
 def setup_parser(
@@ -137,6 +154,21 @@ def setup_parser(
             type=int,
             default=None,
             help="The ending episode number.",
+        )
+        parser.add_argument(
+            "--episodes",
+            nargs="+",
+            default=None,
+            help=(
+                "Specific episode numbers to download. "
+                "Example: --episodes 1,3,7,12 or --episodes 1 3 7 12"
+            ),
+        )
+        parser.add_argument(
+            "--lang",
+            type=str,
+            default=DEFAULT_LANGUAGE,
+            help="Preferred audio language track (e.g., jpn, ita).",
         )
 
     add_common_arguments(parser)

@@ -13,6 +13,7 @@ import os
 import random
 import sys
 import time
+from urllib.parse import urlparse
 
 import brotli
 import cloudscraper
@@ -47,7 +48,7 @@ def add_random_delay(min_delay: float = 0.5, max_delay: float = 2.0) -> None:
 
 def prepare_cloudscraper_session() -> CloudScraper:
     """Create a cloudscraper session to mimic a Firefox browser on macOS."""
-    scraper = cloudscraper.create_scraper(
+    return cloudscraper.create_scraper(
         browser={
             "browser": "firefox",
             "platform": "darwin",  # macOS
@@ -69,7 +70,6 @@ def prepare_cloudscraper_session() -> CloudScraper:
     scraper.mount('https://', adapter)
     
     return scraper
-
 
 def fetch_page_cloudflare(url: str, timeout: int = 10) -> BeautifulSoup:
     """Fetch HTML content from a Cloudflare-protected webpage using cloudscraper."""
@@ -142,6 +142,7 @@ def fetch_page(url: str, timeout: int = 10) -> BeautifulSoup:
     # Add additional headers to look more like a real browser
     headers = prepare_headers()
     headers.update(DEFAULT_HEADERS)
+    headers["Referer"] = f"https://{urlparse(url).netloc}/"
 
     try:
         # First attempt: normal request

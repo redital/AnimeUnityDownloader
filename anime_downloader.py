@@ -12,62 +12,126 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+import logging
 import random
 import time
 from pathlib import Path
+from urllib.parse import urlparse
 
 import requests
 from rich.live import Live
 
-from src.config import parse_arguments, prepare_headers
+from src.config import (
+    DEFAULT_LANGUAGE,
+    DOWNLOAD_QUALITIES,
+    HTTP_STATUS_OK,
+    parse_arguments,
+)
 from src.crawler.crawler import Crawler
-from src.crawler.crawler_utils import extract_download_link
 from src.download_utils import (
     get_episode_filename,
+    remove_special_characters,
     run_in_parallel,
     save_file_with_progress,
 )
 from src.file_utils import create_download_directory
-from src.general_utils import clear_terminal, fetch_page, fetch_page_httpx
+from src.general_utils import (
+    clear_terminal,
+    fetch_page_httpx,
+    prepare_cloudscraper_session,
+)
 from src.progress_utils import create_progress_bar, create_progress_table
 
 
 def download_episode(
     download_link: str,
     download_path: str,
+    episode_number: str,
     task_info: tuple,
     retries: int = 4,
 ) -> None:
-    """Download an episode from the download link and provides progress updates."""
+    """Download an episode from /episode-videos/{id}/download with quality fallback."""
+    parsed_download_link = urlparse(download_link)
+    headers = {
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,video/mp4,*/*;q=0.8",
+        "Referer": f"{parsed_download_link.scheme}://{parsed_download_link.netloc}/",
+    }
+
     for attempt in range(retries):
         try:
-            headers = prepare_headers()
-            response = requests.get(
-                download_link,
-                stream=True,
-                headers=headers,
-                timeout=10,
-            )
-            response.raise_for_status()
+            scraper = prepare_cloudscraper_session()
+            response = None
 
-        except requests.RequestException:
+            for quality in DOWNLOAD_QUALITIES:
+                res = scraper.get(
+                    f"{download_link}?quality={quality}",
+                    stream=True,
+                    headers=headers,
+                    timeout=20,
+                    allow_redirects=True,
+                )
+
+                content_type = res.headers.get("Content-Type", "").lower()
+                if (
+                    res.status_code == HTTP_STATUS_OK
+                    and "text/html" not in content_type
+                ):
+                    response = res
+                    break
+
+                logging.warning(
+                    "Episode %s (%sp) returned status %s (%s)",
+                    episode_number,
+                    quality,
+                    res.status_code,
+                    content_type,
+                )
+                res.close()
+
+            if response is None:
+                pass
+#                msg = f"No valid MP4 stream found for episode {episode_number}"
+#                raise requests.RequestException(msg)
+
+        except requests.RequestException as req_err:
+            logging.warning(
+                "Attempt %d/%d failed for episode %s: %s",
+                attempt + 1,
+                retries,
+                episode_number,
+                req_err,
+            )
             if attempt < retries - 1:
-                delay = 10 * (attempt + 1) + random.uniform(1, 2)  # noqa: S311
-                time.sleep(delay)
+                time.sleep(10 * (attempt + 1) + random.uniform(1, 2))  # noqa: S311
 
         else:
-            filename = get_episode_filename(download_link)
-            final_path = Path(download_path) / filename
-            save_file_with_progress(response, final_path, task_info)
+            with response:
+                filename = get_episode_filename(
+                    download_link,
+                    response,
+                ) or get_hls_episode_filename(download_path, episode_number)
+                save_file_with_progress(
+                    response,
+                    Path(download_path) / filename,
+                    task_info,
+                )
             break
 
 
-def process_video_url(video_url: str, download_path: str, task_info: tuple) -> None:
-    """Process an embed URL to extract episode download links."""
-    soup = fetch_page(video_url)
-    script_items = soup.find_all("script")
-    download_link = extract_download_link(script_items, video_url)
-    download_episode(download_link, download_path, task_info)
+def get_hls_episode_filename(download_path: str, episode_number: str) -> str:
+    """Build the file name of an episode downloaded from its HLS stream."""
+    anime_name = remove_special_characters(Path(download_path).name.replace(" ", "_"))
+    return f"{anime_name}_Ep_{episode_number.zfill(2)}.mp4"
+
+
+def process_video_url(
+    video_url: str,
+    download_path: str,
+    task_info: tuple,
+) -> None:
+    """Download an episode from its direct video URL."""
+    episode_number = str(task_info[-1])
+    download_episode(video_url, download_path, episode_number, task_info)
 
 
 def download_anime(anime_name: str, video_urls: list[str], download_path: str, progress_callback: callable | None = None) -> None:
@@ -81,8 +145,8 @@ def download_anime(anime_name: str, video_urls: list[str], download_path: str, p
 
 async def process_anime_download(
     url: str,
-    start_episode: int | None = None,
-    end_episode: int | None = None,
+    episodes_range: tuple = (None, None),
+    episodes: list[int] | None = None,
     custom_path: str | None = None,
     progress_callback: callable | dict | None = None,
     episode_numbers: list[int] | tuple[int, ...] | str | None = None,
@@ -121,10 +185,11 @@ async def main() -> None:
     """Execute the script to download anime episodes from a given AnimeUnity URL."""
     clear_terminal()
     args = parse_arguments()
+    episodes = parse_episodes_list(args.episodes)
     await process_anime_download(
         args.url,
-        start_episode=args.start,
-        end_episode=args.end,
+        episodes_range=(args.start, args.end),
+        episodes=episodes,
         custom_path=args.custom_path,
     )
 
