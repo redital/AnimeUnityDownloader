@@ -19,6 +19,7 @@ services:
       - SSH_USER=${SSH_USER}
       - SSH_PASSWORD=${SSH_PASSWORD}
       - MEDIA_DIRECTORY=${MEDIA_DIRECTORY}
+      - ANIMEUNITY_URL=${ANIMEUNITY_URL}
     ports:
       - "8222:${FLASK_PORT}"
     restart: unless-stopped
