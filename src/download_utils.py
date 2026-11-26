@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import unquote
@@ -152,4 +152,7 @@ def run_in_parallel(
             task_info = (job_progress, task, overall_task, extra_info, indx)
             future = executor.submit(func, item, *args, task_info)
             futures[future] = task
-            manage_running_tasks(futures, job_progress)
+
+        for future in as_completed(futures):
+            # Propaga eventuali eccezioni avvenute nei worker e impedisce loop infiniti
+            future.result()

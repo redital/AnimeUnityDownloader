@@ -84,23 +84,37 @@ async def process_anime_download(
     start_episode: int | None = None,
     end_episode: int | None = None,
     custom_path: str | None = None,
-    progress_callback: callable | None = None,
+    progress_callback: callable | dict | None = None,
+    episode_numbers: list[int] | tuple[int, ...] | str | None = None,
 ) -> None:
     """Process the download of an anime from the specified URL."""
-    soup = fetch_page_httpx(url)
-    crawler = Crawler(url=url, start_episode=start_episode, end_episode=end_episode)
+    soup = await asyncio.to_thread(fetch_page_httpx, url)
+    crawler = await asyncio.to_thread(
+        Crawler,
+        url=url,
+        start_episode=start_episode,
+        end_episode=end_episode,
+        episode_numbers=episode_numbers,
+    )
     anime_name = crawler.extract_anime_name(soup, url)
     download_path = create_download_directory(anime_name, custom_path=custom_path)
     video_urls = await crawler.collect_video_urls()
-    # inform caller about total episodes and anime name if callback provided
-    try:
-        if callable(progress_callback):
-            progress_callback("__total__", len(video_urls))
-            progress_callback("__anime_name__", anime_name)
-    except Exception:
-        pass
 
-    download_anime(anime_name, video_urls, download_path, progress_callback=progress_callback)
+    # Estrai la callback reale sia se è passata come funzione che come dizionario
+    cb = progress_callback.get("progress_cb") if isinstance(progress_callback, dict) else progress_callback
+
+    if callable(cb):
+        cb("__total__", len(video_urls))
+        cb("__anime_name__", anime_name)
+
+    # Esegui il download sincrono in un thread per non bloccare l'event loop
+    await asyncio.to_thread(
+        download_anime,
+        anime_name,
+        video_urls,
+        download_path,
+        progress_callback=progress_callback,
+    )
 
 
 async def main() -> None:
