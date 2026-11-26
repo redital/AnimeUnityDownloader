@@ -89,9 +89,9 @@ def download_episode(
                 res.close()
 
             if response is None:
-                pass
-#                msg = f"No valid MP4 stream found for episode {episode_number}"
-#                raise requests.RequestException(msg)
+#                pass
+                msg = f"No valid MP4 stream found for episode {episode_number}"
+                raise requests.RequestException(msg)
 
         except requests.RequestException as req_err:
             logging.warning(
@@ -149,29 +149,34 @@ async def process_anime_download(
     episodes: list[int] | None = None,
     custom_path: str | None = None,
     progress_callback: callable | dict | None = None,
-    episode_numbers: list[int] | tuple[int, ...] | str | None = None,
+    start_episode: int | None = None,
+    end_episode: int | None = None,
+    episode_numbers: list[int] | None = None,
 ) -> None:
     """Process the download of an anime from the specified URL."""
+    if start_episode is not None or end_episode is not None:
+        episodes_range = (start_episode, end_episode)
+    if episode_numbers is not None and episodes is None:
+        episodes = episode_numbers
+
     soup = await asyncio.to_thread(fetch_page_httpx, url)
     crawler = await asyncio.to_thread(
         Crawler,
         url=url,
-        start_episode=start_episode,
-        end_episode=end_episode,
-        episode_numbers=episode_numbers,
+        episodes_range=episodes_range,
+        episodes=episodes,
+        soup=soup,
     )
     anime_name = crawler.extract_anime_name(soup, url)
     download_path = create_download_directory(anime_name, custom_path=custom_path)
     video_urls = await crawler.collect_video_urls()
 
-    # Estrai la callback reale sia se è passata come funzione che come dizionario
     cb = progress_callback.get("progress_cb") if isinstance(progress_callback, dict) else progress_callback
 
     if callable(cb):
         cb("__total__", len(video_urls))
         cb("__anime_name__", anime_name)
 
-    # Esegui il download sincrono in un thread per non bloccare l'event loop
     await asyncio.to_thread(
         download_anime,
         anime_name,

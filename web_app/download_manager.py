@@ -50,17 +50,18 @@ threading.Thread(target=start_background_loop, args=(background_loop,), daemon=T
 #     return True, "ok"
 def new_check_resource_availability(url):
     logger.info(f"Verifying resource availability for URL: {url}")
+    soup = fetch_page_httpx(url)
     try:
-        crawler = Crawler(url=url, start_episode=None, end_episode=None)
+        crawler = Crawler(url=url, episodes_range=(None, None), soup=soup)
     except Exception as e:
-        message = f"Error initializing crawler"
+        message = "Error initializing crawler"
         logger.error(message)
         logger.exception(e)
         return False, message, None, None
-    soup = fetch_page_httpx(url)
+
     anime_name = crawler.extract_anime_name(soup, url)
-    n_episodes = crawler.num_episodes
-    if n_episodes<1:
+    n_episodes = crawler._get_num_episodes()
+    if n_episodes < 1:
         message = "No episodes found for the given anime ID"
         logger.error(message)
         return False, message, None, None
