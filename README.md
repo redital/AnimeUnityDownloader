@@ -183,7 +183,7 @@ The API can be run in a container:
 docker compose up -d --build
 ```
 
-The service is then available on `http://localhost:8222`. Downloads are saved in `./Downloads`: to save them on a network share, set `MEDIA_DIRECTORY` to its mount point on the host. These settings, together with the variables of the [API](#api), can be changed with a `.env` file:
+The service is then available on `http://localhost:8222`. The host folder is mounted in the container at `/app/Downloads`. By default, downloads are saved in the local `./Downloads` folder; to use a network share or another location, set `MEDIA_DIRECTORY` to that folder's path on the Docker host. These settings, together with the variables of the [API](#api), can be changed with a `.env` file:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
