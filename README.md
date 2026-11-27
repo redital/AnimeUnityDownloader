@@ -165,6 +165,21 @@ The application is configured through environment variables:
 | `ANIMEUNITY_URL` | `https://www.animeunity.to` | Base URL of AnimeUnity |
 | `DOWNLOAD_ROOT` | working directory | Folder under which downloads may be saved. A custom download path, relative or absolute, must be inside it: set it to the mount point of a network share to save there |
 
+## Docker
+
+The API can be run in a container:
+
+```bash
+docker compose up -d --build
+```
+
+The service is then available on `http://localhost:8222`. Downloads are saved in `./Downloads`: to save them on a network share, set `MEDIA_DIRECTORY` to its mount point on the host. These settings, together with the variables of the [API](#api), can be changed with a `.env` file:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `HOST_PORT` | `8222` | Port exposed on the host |
+| `MEDIA_DIRECTORY` | `./Downloads` | Host folder mounted as the download folder |
+
 ## File Download Location
 
 If the `--custom-path <custom_path>` argument is used, the downloaded files will be saved in `<custom_path>/Downloads`. Otherwise, the files will be saved in a `Downloads` folder created within the script's directory
