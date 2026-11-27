@@ -138,6 +138,33 @@ https://www.animeunity.to/anime/2598-made-in-abyss
 python3 main.py
 ```
 
+## API
+
+A small [Flask](https://flask.palletsprojects.com/) application exposes the downloader through an HTTP API, so that downloads can be started and controlled from other programs.
+
+```bash
+pip install -r requirements.txt
+python3 flask_app.py
+```
+
+The API listens on `http://localhost:5000`. It has no authentication: do not expose it to untrusted networks.
+
+- `GET /download/<anime_id>?start_episode=&end_episode=&custom_path=` starts a download.
+- `GET /download-status/<anime_id>` and `GET /download-statuses` report the progress.
+- `POST /downloads/pause`, `/downloads/resume`, `/downloads/cancel` and `/downloads/cleanup` act on all the downloads.
+- `POST /download/<anime_id>/cancel` and `/download/<anime_id>/remove` act on a single one.
+
+The application is configured through environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `FLASK_HOST` | `0.0.0.0` | Address to bind to |
+| `FLASK_PORT` | `5000` | Port to listen on |
+| `FLASK_DEBUG` | `false` | Enable Flask debug mode |
+| `SSL_CONTEXT` | unset | Set to `adhoc` to serve over HTTPS (requires the `cryptography` package) |
+| `ANIMEUNITY_URL` | `https://www.animeunity.to` | Base URL of AnimeUnity |
+| `DOWNLOAD_ROOT` | working directory | Folder under which downloads may be saved. A custom download path, relative or absolute, must be inside it: set it to the mount point of a network share to save there |
+
 ## File Download Location
 
 If the `--custom-path <custom_path>` argument is used, the downloaded files will be saved in `<custom_path>/Downloads`. Otherwise, the files will be saved in a `Downloads` folder created within the script's directory
