@@ -1,9 +1,9 @@
-"""Flask application exposing the download API."""
+"""Flask application exposing the web interface and the download API."""
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, render_template, request, send_from_directory
 from werkzeug.exceptions import HTTPException
 
-from config import flask_app_config
+from config import flask_app_config, static_folder, template_folder
 from logger import logger
 from api.download_manager import (
     get_download_status,
@@ -12,9 +12,25 @@ from api.download_manager import (
 )
 from api.routes.download_management_routes import download_management_routes
 
-app = Flask(__name__, static_folder=None)
+app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
 
 app.register_blueprint(download_management_routes)
+
+
+@app.route("/favicon.ico")
+def favicon():
+    """Serve the favicon."""
+    return send_from_directory(
+        static_folder,
+        "favicon.ico",
+        mimetype="image/vnd.microsoft.icon",
+    )
+
+
+@app.route("/")
+def home():
+    """Serve the web interface."""
+    return render_template("index.html")
 
 
 @app.route("/download/<anime_id>", methods=["GET"])

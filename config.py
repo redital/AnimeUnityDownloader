@@ -1,4 +1,4 @@
-"""Configuration of the Flask application, read from environment variables."""
+"""Configuration of the Flask web interface, read from environment variables."""
 
 import os
 from pathlib import Path
@@ -24,6 +24,9 @@ flask_app_config = {
     "port": int(os.environ.get("FLASK_PORT", "5000")),
     "ssl_context": _env_optional("SSL_CONTEXT"),
 }
+
+template_folder = os.environ.get("TEMPLATE_FOLDER_PATH", "web_app/templates")
+static_folder = os.environ.get("STATIC_FOLDER_PATH", "web_app/static")
 
 # Folder under which downloads may be saved, including any custom path
 download_root = os.environ.get("DOWNLOAD_ROOT", "").strip() or str(Path.cwd())

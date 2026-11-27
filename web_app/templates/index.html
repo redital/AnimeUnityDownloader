@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anime Downloader</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Loading overlay -->
+        <div id="loadingOverlay" class="loading-overlay">
+            <div class="loading-container">
+                <div class="spinner"></div>
+                <div class="loading-text" id="loadingText">Caricamento...</div>
+            </div>
+        </div>
+
+        <!-- Header -->
+        <div class="header">
+            <h1>🎌 Anime Downloader</h1>
+            <div class="header-controls">
+              <button type="button" id="darkModeToggle" class="dark-mode-toggle">🌙 Dark Mode</button>
+            </div>
+        </div>
+
+        <!-- Messaggio di risultato -->
+        <div id="resultMessage" style="display: none;">
+            <span id="resultMessageText"></span>
+            <button type="button" id="resultMessageClose" class="message-close-btn" style="float: right; background: none; border: none; color: inherit; cursor: pointer; font-size: 18px;">✕</button>
+        </div>
+
+        <!-- Layout 2 colonne: Downloads | Controlli -->
+        <div class="layout">
+            <!-- COLONNA SINISTRA: Download Progress -->
+            <div class="section" id="progressSection">
+                <h2>Download Progress</h2>
+                <div id="allDownloadProgressContainer">
+                    <!-- Progressi inseriti dinamicamente -->
+                </div>
+
+                <!-- Form per avviare nuovo download -->
+                <form id="downloadForm" class="form">
+                    <h3>Nuovo Download</h3>
+                    <label for="anime_id">Anime ID</label>
+                    <input type="text" id="anime_id" name="anime_id" required>
+                    
+                    <button type="button" id="startDownloadBtn">Avvia Download</button>
+
+                    <div id="additionalParams" class="hidden">
+                        <label for="start_episode">Episodio iniziale</label>
+                        <input type="number" id="start_episode" name="start_episode">
+                        
+                        <label for="end_episode">Episodio finale</label>
+                        <input type="number" id="end_episode" name="end_episode">
+
+                        <label for="episodes">Episodi specifici (es. 1,3,5-8)</label>
+                        <input type="text" id="episodes" name="episodes" placeholder="1,3,5-8">
+                        
+                        <label for="custom_path">Percorso personalizzato</label>
+                        <input type="text" id="custom_path" name="custom_path">
+                    </div>
+
+                    <button type="button" id="toggleParamsBtn">Parametri aggiuntivi</button>
+                </form>
+            </div>
+
+            <!-- COLONNA DESTRA: Controlli Download -->
+            <div class="section" id="downloadControls">
+                <h2>Controllo Download</h2>
+                <p style="font-size: 12px; color: #666; margin-bottom: 15px;">
+                    Gestisci tutti i download in corso
+                </p>
+                <button type="button" id="pauseAllBtn">⏸ Pausa Tutti</button>
+                <button type="button" id="resumeAllBtn">▶ Riprendi Tutti</button>
+                <button type="button" id="cancelAllBtn" class="danger">⏹ Annulla Tutti</button>
+                <button type="button" id="clearFinishedBtn">🧹 Svuota completati</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modular JavaScript imports -->
+    <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/downloads.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
+</body>
+</html>

@@ -165,6 +165,16 @@ The application is configured through environment variables:
 | `ANIMEUNITY_URL` | `https://www.animeunity.to` | Base URL of AnimeUnity |
 | `DOWNLOAD_ROOT` | working directory | Folder under which downloads may be saved. A custom download path, relative or absolute, must be inside it: set it to the mount point of a network share to save there |
 
+## Web Interface
+
+A web page served by the same application lets you start downloads by anime ID, follow their progress, and pause, resume, cancel or clear them from the browser.
+
+```bash
+python3 flask_app.py
+```
+
+Then open `http://localhost:5000` (`http://localhost:8222` when using [Docker](#docker)). The page uses the [API](#api), so it is configured in the same way and the same warning about authentication applies.
+
 ## Docker
 
 The API can be run in a container:
