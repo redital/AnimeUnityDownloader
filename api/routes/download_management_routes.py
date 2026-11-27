@@ -35,17 +35,17 @@ def cancel_downloads_route():
     return jsonify(result), status_code
 
 
-@download_management_routes.route("/download/<anime_id>/cancel", methods=["POST"])
-def cancel_single_download_route(anime_id):
+@download_management_routes.route("/download/<job_id>/cancel", methods=["POST"])
+def cancel_single_download_route(job_id):
     """Cancel a single download."""
-    result, status_code = cancel_download(anime_id)
+    result, status_code = cancel_download(job_id)
     return jsonify(result), status_code
 
 
-@download_management_routes.route("/download/<anime_id>/remove", methods=["POST"])
-def remove_single_download_route(anime_id):
+@download_management_routes.route("/download/<job_id>/remove", methods=["POST"])
+def remove_single_download_route(job_id):
     """Remove a finished download from the list."""
-    result, status_code = remove_download(anime_id)
+    result, status_code = remove_download(job_id)
     return jsonify(result), status_code
 
 

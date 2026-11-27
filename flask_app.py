@@ -24,6 +24,7 @@ def download_anime(anime_id):
         "anime_id": anime_id,
         "start_episode": request.args.get("start_episode"),
         "end_episode": request.args.get("end_episode"),
+        "episodes": request.args.get("episodes"),
         "custom_path": request.args.get("custom_path"),
     }
 
@@ -43,7 +44,10 @@ def download_anime(anime_id):
 @app.route("/download-status/<anime_id>", methods=["GET"])
 def download_status(anime_id):
     """Return the status of a single download."""
-    result, status_code = get_download_status(anime_id)
+    result, status_code = get_download_status(
+        anime_id,
+        job_id=request.args.get("job_id"),
+    )
     return jsonify(result), status_code
 
 

@@ -149,10 +149,10 @@ python3 flask_app.py
 
 The API listens on `http://localhost:5000`. It has no authentication: do not expose it to untrusted networks.
 
-- `GET /download/<anime_id>?start_episode=&end_episode=&custom_path=` starts a download.
-- `GET /download-status/<anime_id>` and `GET /download-statuses` report the progress.
+- `GET /download/<anime_id>?start_episode=&end_episode=&episodes=&custom_path=` starts a download. `episodes` is a comma-separated list such as `1,3,5-8` and can be combined with a range; without any of them the whole anime is downloaded. Several downloads of the same anime can run together as long as they do not share episodes: each one has a `job_id` such as `<anime_id>:1-3`.
+- `GET /download-status/<anime_id>` and `GET /download-statuses` report the progress. The status of a single job is also available with `?job_id=`; an anime with several jobs returns the list of all of them.
 - `POST /downloads/pause`, `/downloads/resume`, `/downloads/cancel` and `/downloads/cleanup` act on all the downloads.
-- `POST /download/<anime_id>/cancel` and `/download/<anime_id>/remove` act on a single one.
+- `POST /download/<job_id>/cancel` and `/download/<job_id>/remove` act on a single one (the anime id works too when the anime has a single job).
 
 The application is configured through environment variables:
 
